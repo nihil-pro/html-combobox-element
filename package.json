@@ -1,0 +1,45 @@
+{
+  "name": "html-combobox-element",
+  "version": "0.0.2-beta.6",
+  "description": "The combo-box web-component & customizable select polyfill",
+  "type": "module",
+  "scripts": {
+    "prepare": "husky",
+    "clean": "rm -rf dist",
+    "build:combobox": "tsc -b configs/tsconfig.cjs.json configs/tsconfig.esm.json configs/tsconfig.types.json",
+    "build": "npm-run-all clean build:combobox",
+    "check-types": "tsc --noEmit"
+  },
+  "keywords": [
+    "web-components",
+    "custom elements",
+    "combo-box",
+    "combobox"
+  ],
+  "author": "Roman Konstantin",
+  "license": "MIT",
+  "devDependencies": {
+    "@espcom/eslint-config": "latest",
+    "@types/node": "22.8.6",
+    "@types/react": "^19.2.14",
+    "c8": "10.1.2",
+    "esbuild": "0.25.5",
+    "husky": "9.1.5",
+    "lint-staged": "15.2.9",
+    "npm-run-all": "^4.1.5",
+    "preact": "^10.28.4",
+    "react": "^19.2.4",
+    "solid-js": "^1.9.11",
+    "tsx": "^4.19.2",
+    "typescript": "5.9.3",
+    "vue": "^3.5.28",
+    "xml-splitter": "1.2.1"
+  },
+  "sideEffect": false,
+  "files": [
+    "dist"
+  ],
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/types/index.d.ts"
+}
