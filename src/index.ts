@@ -1,7 +1,17 @@
-/// <reference types="solid-js" />
-/// <reference types="preact" />
-/// <reference types="react" />
-/// <reference types="vue" />
+// Type-only, side-effect-free imports. These exist purely so TypeScript accepts the
+// `declare module '...'` augmentations below while *building this package* (an ambient
+// module augmentation must resolve to a real module in the current compilation). They
+// carry no exported bindings, so they're always elided from the emitted JS and, since
+// nothing below re-exports anything from them, from the emitted .d.ts as well - meaning
+// consumers who don't have react/preact/solid-js/vue installed never need them.
+import type {} from 'react';
+import type {} from 'react/jsx-runtime';
+import type {} from 'react/jsx-dev-runtime';
+import type {} from 'preact';
+import type {} from 'preact/jsx-runtime';
+import type {} from 'solid-js';
+import type {} from 'solid-js/jsx-runtime';
+import type {} from 'vue';
 
 export * from './combobox/index.js';
 
@@ -102,20 +112,6 @@ interface HTMLComboboxElement extends HTMLSelectElement {
   ): void;
 }
 
-interface ComboboxEvent extends Event {
-  readonly target: HTMLComboboxElement;
-  readonly currentTarget: HTMLComboboxElement;
-}
-
-interface ComboboxInputEvent extends InputEvent {
-  readonly target: HTMLComboboxElement;
-  readonly currentTarget: HTMLComboboxElement;
-}
-
-interface ComboboxFocusEvent extends FocusEvent {
-  readonly target: HTMLComboboxElement;
-}
-
 interface ComboboxEventMap extends HTMLElementEventMap {
   "change": ComboboxEvent;
   "blur": ComboboxFocusEvent;
@@ -129,13 +125,8 @@ interface ComboboxEventMap extends HTMLElementEventMap {
   "selectstart": ComboboxEvent;
 }
 
-interface HTMLElementTagNameMap {
-  'combo-box': HTMLComboboxElement;
-  'box-option': HTMLComboboxOptionElement;
-  'box-tag': HTMLComboboxTagElement;
-}
-
-interface ComboboxJsxAttributes {
+/** Own attributes/properties of `<combo-box>`, shared by every JSX integration below. */
+export interface ComboboxJsxAttributes {
   /** The value of the internal input.
    *
    * The internal input is visible when either the `searchable` or `filterable` attribute is present.
@@ -190,179 +181,197 @@ interface ComboboxJsxAttributes {
   disabled?: boolean;
 }
 
-interface ComboboxOptionJsxAttributes {
+export interface ComboboxOptionJsxAttributes {
   value: string;
   label?: string;
-  selected?: boolean
+  selected?: boolean;
 }
 
+/**
+ * Generic HTML/JSX passthrough attributes (class, style, event handlers, `data-*`, `aria-*`, ...).
+ *
+ * These are intentionally framework-agnostic: they don't reference React's, Preact's, Vue's
+ * or Solid's own type packages, so this file never requires any of them to be installed just
+ * to be imported. Every framework below layers `ComboboxJsxAttributes`/`ComboboxOptionJsxAttributes`
+ * on top of this instead of that framework's own `HTMLAttributes` type.
+ */
+export interface ComboboxCommonAttributes {
+  id?: string;
+  class?: string;
+  className?: string;
+  style?: unknown;
+  slot?: string;
+  title?: string;
+  tabIndex?: number;
+  hidden?: boolean;
+  children?: unknown;
+  ref?: unknown;
+  key?: string | number;
+
+  onChange?: (event: ComboboxEvent) => void;
+  onInput?: (event: ComboboxInputEvent) => void;
+  onFocus?: (event: ComboboxFocusEvent) => void;
+  onBlur?: (event: ComboboxFocusEvent) => void;
+  onInvalid?: (event: ComboboxEvent) => void;
+
+  [key: `data-${string}`]: unknown;
+  [key: `aria-${string}`]: unknown;
+  [key: `on${string}`]: ((event: any) => void) | undefined;
+}
 
 declare global {
-  // React 17/18 style
+  interface HTMLElementTagNameMap {
+    'combo-box': HTMLComboboxElement;
+    'box-option': HTMLComboboxOptionElement;
+    'box-tag': HTMLComboboxTagElement;
+  }
+
+  // Declared globally (not just exported) so the `declare module '.../jsx-runtime'`
+  // snippet a consumer copies into their own project (see README) can reference these
+  // by name with no import - just `import 'html-combobox-element'` anywhere in their
+  // program (already required to register the custom elements) is enough to make
+  // these visible everywhere, including in that local snippet file.
+  interface ComboboxEvent extends Event {
+    readonly target: HTMLComboboxElement;
+    readonly currentTarget: HTMLComboboxElement;
+  }
+
+  interface ComboboxInputEvent extends InputEvent {
+    readonly target: HTMLComboboxElement;
+    readonly currentTarget: HTMLComboboxElement;
+  }
+
+  interface ComboboxFocusEvent extends FocusEvent {
+    readonly target: HTMLComboboxElement;
+  }
+
+  type ComboboxElementAttributes = ComboboxCommonAttributes & ComboboxJsxAttributes;
+  type ComboboxOptionElementAttributes = ComboboxCommonAttributes & ComboboxOptionJsxAttributes;
+  type ComboboxTagElementAttributes = ComboboxCommonAttributes;
+
+  // Classic global JSX namespace (React <19 without `jsxImportSource`, older Preact/Solid
+  // setups that never opt into module-scoped JSX). Safe because it only uses our own
+  // framework-agnostic attribute types above.
   namespace JSX {
     interface IntrinsicElements {
-      'combo-box': React.DetailedHTMLProps<React.HTMLAttributes<HTMLComboboxElement> & ComboboxJsxAttributes, HTMLComboboxElement>;
-      'box-option': React.DetailedHTMLProps<React.HTMLAttributes<HTMLComboboxOptionElement> & ComboboxOptionJsxAttributes, HTMLComboboxOptionElement>;
-      'box-tag': React.DetailedHTMLProps<React.HTMLAttributes<HTMLComboboxTagElement>, HTMLComboboxTagElement>;
+      'combo-box': ComboboxElementAttributes;
+      'box-option': ComboboxOptionElementAttributes;
+      'box-tag': ComboboxTagElementAttributes;
     }
   }
-
-  // React 19 style
-  namespace React {
-    namespace JSX {
-      interface IntrinsicElements {
-        'combo-box': React.DetailedHTMLProps<React.HTMLAttributes<HTMLComboboxElement> & ComboboxJsxAttributes, HTMLComboboxElement>;
-        'box-option': React.DetailedHTMLProps<React.HTMLAttributes<HTMLComboboxOptionElement> & ComboboxOptionJsxAttributes, HTMLComboboxOptionElement>;
-        'box-tag': React.DetailedHTMLProps<React.HTMLAttributes<HTMLComboboxTagElement>, HTMLComboboxTagElement>;
-      }
-    }
-  }
-
-
-  // Solid style
-  namespace Solid {
-    namespace JSX {
-      interface IntrinsicElements {
-        'combo-box': any;
-        'box-option': any;
-        'box-tag': any;
-      }
-    }
-  }
-
-  // Vue style
-  namespace Vue {
-    namespace JSX {
-      interface IntrinsicElements {
-        'combo-box': any;
-        'box-option': any;
-        'box-tag': any;
-      }
-    }
-  }
-
-
-  // JSXInternal (Preact internal)
-  namespace JSXInternal {
-    interface IntrinsicElements {
-      'combo-box': preact.HTMLAttributes<HTMLComboboxElement> & ComboboxJsxAttributes
-      'box-option':  preact.HTMLAttributes<HTMLComboboxElement> & ComboboxOptionJsxAttributes
-      'box-tag':  preact.HTMLAttributes<HTMLComboboxTagElement> & {}
-    }
-  }
-
-
 }
 
-// Also cover module augmentations for common ones
+// Also importable explicitly (`import type { ComboboxElementAttributes } from
+// 'html-combobox-element'`), for anyone who prefers that over the ambient global above.
+export type {
+  ComboboxEvent,
+  ComboboxInputEvent,
+  ComboboxFocusEvent,
+  ComboboxElementAttributes,
+  ComboboxOptionElementAttributes,
+  ComboboxTagElementAttributes,
+};
+
+// --- Framework JSX augmentations below ------------------------------------
+//
+// KNOWN LIMITATION: under the automatic JSX runtime (`jsx: "react-jsx"`, or
+// `jsx: "preserve"` + `jsxImportSource`), TypeScript resolves `JSX.IntrinsicElements`
+// through `<jsxImportSource>/jsx-runtime`, and it only honors declaration-merging
+// augmentations of that module when they live in a project-local file - NOT when
+// they ship from a `node_modules` package (verified against real React/Preact/Solid
+// projects; this holds for every augmentation shape/target, it's not specific to how
+// these are written below). These declarations are kept because they're harmless and
+// may still help in toolchains that don't hit that limitation, but the augmentation
+// that actually activates for you needs to be copied into your own project - see the
+// per-framework snippets in the README.
+
+// React
 declare module 'react' {
   namespace JSX {
     interface IntrinsicElements {
-      'combo-box': React.DetailedHTMLProps<React.HTMLAttributes<HTMLComboboxElement> & ComboboxJsxAttributes, HTMLComboboxElement>;
-      'box-option': React.DetailedHTMLProps<React.HTMLAttributes<HTMLComboboxOptionElement> & ComboboxOptionJsxAttributes, HTMLComboboxOptionElement>;
-      'box-tag': React.DetailedHTMLProps<React.HTMLAttributes<HTMLComboboxTagElement>, HTMLComboboxTagElement>;
+      'combo-box': ComboboxElementAttributes;
+      'box-option': ComboboxOptionElementAttributes;
+      'box-tag': ComboboxTagElementAttributes;
+    }
+  }
+}
+declare module 'react/jsx-runtime' {
+  namespace JSX {
+    interface IntrinsicElements {
+      'combo-box': ComboboxElementAttributes;
+      'box-option': ComboboxOptionElementAttributes;
+      'box-tag': ComboboxTagElementAttributes;
+    }
+  }
+}
+declare module 'react/jsx-dev-runtime' {
+  namespace JSX {
+    interface IntrinsicElements {
+      'combo-box': ComboboxElementAttributes;
+      'box-option': ComboboxOptionElementAttributes;
+      'box-tag': ComboboxTagElementAttributes;
     }
   }
 }
 
+// Preact
 declare module 'preact' {
   namespace JSX {
     interface IntrinsicElements {
-      'combo-box': any;
-      'box-option': any;
-      'box-tag': any;
+      'combo-box': ComboboxElementAttributes;
+      'box-option': ComboboxOptionElementAttributes;
+      'box-tag': ComboboxTagElementAttributes;
     }
   }
   namespace JSXInternal {
     interface IntrinsicElements {
-      'combo-box': any;
-      'box-option': any;
-      'box-tag': any;
+      'combo-box': ComboboxElementAttributes;
+      'box-option': ComboboxOptionElementAttributes;
+      'box-tag': ComboboxTagElementAttributes;
+    }
+  }
+}
+// `preact/jsx-runtime` and `preact/jsx-dev-runtime` both resolve to the same
+// underlying types file, so augmenting this one covers both.
+declare module 'preact/jsx-runtime' {
+  namespace JSX {
+    interface IntrinsicElements {
+      'combo-box': ComboboxElementAttributes;
+      'box-option': ComboboxOptionElementAttributes;
+      'box-tag': ComboboxTagElementAttributes;
     }
   }
 }
 
+// Solid. `solid-js` itself re-exports the same `JSX` namespace, but with
+// `jsxImportSource: "solid-js"` TS resolves IntrinsicElements through the
+// `solid-js/jsx-runtime` subpath, so both need augmenting.
 declare module 'solid-js' {
   namespace JSX {
     interface IntrinsicElements {
-      'combo-box': any;
-      'box-option': any;
-      'box-tag': any;
+      'combo-box': ComboboxElementAttributes;
+      'box-option': ComboboxOptionElementAttributes;
+      'box-tag': ComboboxTagElementAttributes;
+    }
+  }
+}
+declare module 'solid-js/jsx-runtime' {
+  namespace JSX {
+    interface IntrinsicElements {
+      'combo-box': ComboboxElementAttributes;
+      'box-option': ComboboxOptionElementAttributes;
+      'box-tag': ComboboxTagElementAttributes;
     }
   }
 }
 
+// Vue (JSX/TSX usage via @vue/babel-plugin-jsx or built-in TSX support)
 declare module 'vue' {
   namespace JSX {
     interface IntrinsicElements {
-      'combo-box': any;
-      'box-option': any;
-      'box-tag': any;
+      'combo-box': ComboboxElementAttributes;
+      'box-option': ComboboxOptionElementAttributes;
+      'box-tag': ComboboxTagElementAttributes;
     }
   }
 }
-
-
-
-// declare global {
-//   namespace React {
-//     namespace JSX {
-//       interface IntrinsicElements {
-//         'combo-box': React.DetailedHTMLProps<Omit<React.HTMLAttributes<HTMLComboboxElement>, 'defaultValue'>,
-//           HTMLComboboxElement
-//         > & ComboboxJsxAttributes;
-//
-//         'box-option': React.DetailedHTMLProps<
-//           React.HTMLAttributes<HTMLComboboxOptionElement>,
-//           HTMLComboboxOptionElement>
-//         & ComboboxOptionJsxAttributes;
-//
-//         'box-tag': React.DetailedHTMLProps<React.HTMLAttributes<HTMLComboboxTagElement>, HTMLComboboxTagElement>;
-//       }
-//     }
-//   }
-//
-//
-//   namespace preact {
-//     namespace JSX {
-//       interface IntrinsicElements {
-//         'combo-box': preact.HTMLAttributes<HTMLComboboxElement> & ComboboxJsxAttributes;
-//         'box-option': preact.HTMLAttributes<HTMLComboboxOptionElement> & ComboboxOptionJsxAttributes;
-//         'box-tag': preact.HTMLAttributes<HTMLComboboxTagElement>;
-//       }
-//     }
-//   }
-//
-// }
-//
-// declare module 'preact' {
-//   namespace JSX {
-//     interface IntrinsicElements {
-//       'combo-box': preact.HTMLAttributes<HTMLComboboxElement> & ComboboxJsxAttributes;
-//       'box-option': preact.HTMLAttributes<HTMLComboboxOptionElement> & ComboboxOptionJsxAttributes;
-//       'box-tag': preact.HTMLAttributes<HTMLComboboxTagElement>;
-//     }
-//   }
-// }
-//
-// // Solid
-// declare module 'solid-js' {
-//   namespace JSX {
-//     interface IntrinsicElements {
-//       'combo-box': HTMLAttributes<HTMLComboboxElement> & ComboboxJsxAttributes
-//       'box-option': HTMLAttributes<HTMLComboboxOptionElement> & ComboboxOptionJsxAttributes
-//       'box-tag': HTMLAttributes<HTMLElement>
-//     }
-//   }
-// }
-//
-//
-// declare global {
-//   namespace JSX {
-//     interface IntrinsicElements {
-//       'combo-box': ComboboxJsxAttributes;
-//       'box-option': ComboboxOptionJsxAttributes;
-//       'box-tag': HTMLElement;
-//     }
-//   }
-// }

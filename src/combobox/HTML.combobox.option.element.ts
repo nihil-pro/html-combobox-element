@@ -1,17 +1,66 @@
 import { toBoolean } from './Boolean.attribute.value.normalizer.js';
 
 export class HTMLComboboxOptionElement extends HTMLElement {
-  static OWN_IDL = new Set(['value', 'label', 'selected']);
+  static OWN_IDL = new Set(['value', 'label', 'selected', 'disabled']);
+  static EventInit = { bubbles: true, cancelable: true, composed: true };
+
+
+  static captureFocus(event: FocusEvent) {
+    if (event.relatedTarget && event.relatedTarget instanceof HTMLComboboxOptionElement) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+  }
+
+  static onNavigate(event: KeyboardEvent) {
+    if (
+      !event.target ||
+      !(event.target instanceof HTMLComboboxOptionElement) ||
+      event.key === 'Tab' ||
+      event.key === 'Enter'
+    ) return;
+    event.preventDefault();
+    if (event.key === 'ArrowDown') {
+      const next = event.target.nextElementSibling;
+      if (next && next instanceof HTMLComboboxOptionElement) {
+        next.focus();
+      }
+    }
+
+    if (event.key === 'ArrowUp') {
+      const prev = event.target.previousElementSibling;
+      if (prev && prev instanceof HTMLComboboxOptionElement) {
+        prev.focus();
+      }
+    }
+  }
+
 
   connectedCallback() {
+
+    this.addEventListener('keydown', HTMLComboboxOptionElement.onNavigate);
+    this.addEventListener('focusout', HTMLComboboxOptionElement.captureFocus);
+    this.addEventListener('click', this.#toggleSelection);
+
     this.#initialAttributesSynchronization();
     this.part.add('option');
     super.setAttribute('tabindex', "0");
     super.setAttribute('role', "option");
 
-    if (!this.value) {
-      this.value = this.textContent;
-    }
+    if (!this.value) this.value = this.label;
+    if (!this.textContent) this.textContent = this.value;
+    this.dispatchEvent(new Event('optionselectedstatechange', HTMLComboboxOptionElement.EventInit));
+  }
+
+  disconnectedCallback() {
+    this.removeEventListener('click', this.#toggleSelection);
+    this.removeEventListener('keydown', HTMLComboboxOptionElement.onNavigate);
+    this.removeEventListener('focusout', HTMLComboboxOptionElement.captureFocus);
+  }
+
+  #toggleSelection = (event: Event) => {
+    event.stopPropagation();
+    this.selected = !this.selected;
   }
 
   get value() {
@@ -34,7 +83,29 @@ export class HTMLComboboxOptionElement extends HTMLElement {
     return this.hasAttribute('selected')
   }
   set selected(value) {
-    super.toggleAttribute('selected', toBoolean(value));
+    const prev = this.selected;
+    const force = toBoolean(value);
+    if (prev === force) {
+      return;
+    }
+
+    super.toggleAttribute('selected', force);
+    this.part.toggle('selected', force);
+    // console.log('this.isConnected', this.isConnected)
+    if (this.isConnected) {
+      this.dispatchEvent(new Event('optionselectedstatechange', HTMLComboboxOptionElement.EventInit));
+    }
+  }
+
+
+  get disabled() {
+    return this.hasAttribute('disabled')
+  }
+  set disabled(value) {
+    const force = toBoolean(value);
+    super.toggleAttribute('disabled', force);
+    this.part.toggle('disabled', force);
+    super.toggleAttribute('inert', force)
   }
 
   #initialAttributesSynchronization() {
@@ -57,6 +128,11 @@ export class HTMLComboboxOptionElement extends HTMLElement {
     } else {
       super.removeAttribute(name);
     }
+  }
+
+  toggleAttribute(name: string, force?: boolean): boolean {
+    if (name === 'selected') this.part.toggle(name, force);
+    return super.toggleAttribute(name, force);
   }
 }
 

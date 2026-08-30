@@ -1,6 +1,6 @@
 {
   "name": "html-combobox-element",
-  "version": "0.0.2-beta.6",
+  "version": "0.0.3",
   "description": "The combo-box web-component & customizable select polyfill",
   "type": "module",
   "scripts": {
@@ -37,9 +37,17 @@
   },
   "sideEffect": false,
   "files": [
-    "dist"
+    "dist",
+    "combobox-skill"
   ],
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
-  "types": "dist/types/index.d.ts"
+  "types": "dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "require": "./dist/cjs/index.js",
+      "import": "./dist/esm/index.js"
+    }
+  }
 }

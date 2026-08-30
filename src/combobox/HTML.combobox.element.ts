@@ -1,60 +1,166 @@
 import { ComboboxMarkup } from './Combobox.markup.js'
 import { HTMLComboboxOptionElement } from './HTML.combobox.option.element.js';
 import { toBoolean } from './Boolean.attribute.value.normalizer.js';
-import { HTMLComboboxTagElement } from './HTML.combobox.tag.element';
+import { HTMLComboboxTagElement } from './HTML.combobox.tag.element.js';
+
 
 export class HTMLComboboxElement extends HTMLElement {
   static OWN_IDL = new Set(['required', 'disabled', 'clearable', 'multiple', 'filterable', 'searchable', 'value', 'placeholder', 'query'])
-  static observerOptions = { childList: true, attributes: false, subtree: false };
+  static observerOptions = { childList: true };
   static styleSheet = [new CSSStyleSheet];
   static formAssociated = true;
 
   shadowRoot: ShadowRoot;
-  #internals: ElementInternals;
+  #internals: ElementInternals & { states: Set<string> };
 
   #observer: MutationObserver;
   #markup: ComboboxMarkup;
   #values: Set<string> = new Set;
+  #prevValue = '';
+  #changed = false;
+
 
   constructor() {
     super();
-    this.#internals = this.attachInternals();
+
+    this.#internals = this.attachInternals() as ElementInternals & { states: Set<string> };
     this.#internals.role = "combobox";
     this.#internals.ariaHasPopup = "dialog";
-    this.shadowRoot = this.attachShadow({ mode: 'closed', delegatesFocus: true });
+    this.shadowRoot = this.attachShadow({ mode: 'open', delegatesFocus: true }); //delegatesFocus: true
     this.#markup = new ComboboxMarkup(this.shadowRoot, this.#internals);
-    this.shadowRoot.innerHTML = ComboboxMarkup.template;
+    this.shadowRoot.appendChild(ComboboxMarkup.markup.content.cloneNode(true));
     this.shadowRoot.adoptedStyleSheets = HTMLComboboxElement.styleSheet;
     this.#observer = new MutationObserver(this.#onOptionsChanges);
+    this.#markup.connect();
+
   }
+
 
   // Lifecycle callbacks
   connectedCallback() {
-    this.#markup.connect();
+    for (const child of Array.from(this.children)) {
+      if (HTMLComboboxElement.#isOptionLike(child)) {
+        this.#markup.optionsContainer?.appendChild(child);
+      }
+    }
+    this.#markup.onHostConnected();
+    this.shadowRoot.addEventListener('optionselectedstatechange', this.#onOptionSelectedStateChanges);
+    this.shadowRoot.addEventListener('tagcleared', this.#onClearTag);
     this.#initialAttributesSynchronization();
-    this.#onOptionsChanges([{ addedNodes: Array.from(this.children) }] as unknown as MutationRecord[]);
-    this.#observer.observe(this, HTMLComboboxElement.observerOptions);
-    this.#markup.clearAllButton.addEventListener('click', this.#onClear);
-    this.#markup.searchInput.addEventListener('input', this.#onInput);
+    this.#observer.observe(this.#markup.optionsContainer!, HTMLComboboxElement.observerOptions);
+    this.addEventListener('keydown', this.#onKeyDown);
+    this.#markup.clearAllButton!.addEventListener('click', this.#onClearAll);
+    this.#markup.searchInput!.addEventListener('input', this.#onInput);
+    this.#markup.dropdown!.addEventListener('toggle', this.#onPickerToggle);
+    this.#setValidityAndFormValue();
+
+    // Options/optgroups can end up as direct light-DOM children of <combo-box> without ever
+    // going through insertBefore/appendChild below: parsed straight from static HTML markup,
+    // or - notably - Solid's compiler, which renders static JSX subtrees via a single
+    // <template> + cloneNode(true), never calling any child-mutation method at all. Sweep
+    // whatever is already here once on connect and move it into the real options container.
+  }
+
+  static #isOptionLike(node: Node): node is HTMLComboboxOptionElement | HTMLOptGroupElement {
+    return node instanceof HTMLComboboxOptionElement || node instanceof HTMLOptGroupElement;
+  }
+
+  // Overwritten child-mutation methods.
+  //
+  // <box-option>/<optgroup> children don't actually live under <combo-box> itself - they're
+  // redirected into #markup.optionsContainer inside the shadow root, which is what the
+  // dropdown renders from and what #observer watches. Every native method a framework's
+  // renderer or plain user code might use to add/move/remove children needs to funnel through
+  // the same redirect, since browsers implement each of these independently (overriding one,
+  // e.g. insertBefore, does not make the others call it under the hood):
+  //   - React calls appendChild for a plain append and insertBefore only when reordering.
+  //   - Vue and Preact always call insertBefore, with a null reference for a plain append.
+  //   - Solid mostly bypasses all of them for static subtrees (see connectedCallback above),
+  //     but dynamic option lists still go through insert()/insertBefore().
+
+  insertBefore = <T extends Node>(node: T, referenceNode: Node | null): T => {
+    if (HTMLComboboxElement.#isOptionLike(node)) {
+      this.#markup.optionsContainer?.insertBefore(node, referenceNode);
+    } else {
+      super.insertBefore(node, referenceNode);
+    }
+    return node;
+  }
+
+  appendChild = <T extends Node>(node: T): T => {
+    if (HTMLComboboxElement.#isOptionLike(node)) {
+      this.#markup.optionsContainer?.appendChild(node);
+    } else {
+      super.appendChild(node);
+    }
+    return node;
+  }
+
+  append = (...nodes: (Node | string)[]) => {
+    nodes.forEach(node => this.appendChild(typeof node === 'string' ? new Text(node) : node));
+  }
+
+  prepend = (...nodes: (Node | string)[]) => {
+    [...nodes].reverse().forEach(node => {
+      const n = typeof node === 'string' ? new Text(node) : node;
+      if (HTMLComboboxElement.#isOptionLike(n)) {
+        this.#markup.optionsContainer?.insertBefore(n, this.#markup.optionsContainer.firstChild);
+      } else {
+        super.insertBefore(n, this.firstChild);
+      }
+    });
+  }
+
+  replaceChildren = (...nodes: (Node | string)[]) => {
+    this.#markup.optionsContainer?.replaceChildren();
+    super.replaceChildren();
+    this.append(...nodes);
+  }
+
+  removeChild = <T extends Node>(child: T): T => {
+    if (child.parentNode === this.#markup.optionsContainer) {
+      this.#markup.optionsContainer!.removeChild(child);
+    } else if (child.parentNode === this) {
+      super.removeChild(child);
+    }
+    return child;
+  }
+
+  replaceChild = <T extends Node>(newChild: Node, oldChild: T): T => {
+    if (oldChild.parentNode === this.#markup.optionsContainer) {
+      this.#markup.optionsContainer!.replaceChild(newChild, oldChild);
+    } else {
+      super.replaceChild(newChild, oldChild);
+    }
+    return oldChild;
+  }
+
+  get changed() {
+    return this.#changed;
   }
 
   disconnectedCallback() {
     this.#observer.disconnect();
     this.#markup.disconnect();
-    this.#markup.clearAllButton.removeEventListener('click', this.#onClear);
-    this.#markup.searchInput.removeEventListener('input', this.#onInput);
+    this.removeEventListener('keydown', this.#onKeyDown);
+    this.#markup.clearAllButton!.removeEventListener('click', this.#onClearAll);
+    this.#markup.searchInput!.removeEventListener('input', this.#onInput);
+    this.#markup.dropdown!.removeEventListener('toggle', this.#onPickerToggle);
+    this.shadowRoot.removeEventListener('optionselectedstatechange', this.#onOptionSelectedStateChanges);
+    this.shadowRoot.removeEventListener('tagcleared', this.#onClearTag);
   }
 
   formResetCallback() {
-    this.#values = new Set;
     this.selectedOptions.forEach(option => option.selected = false);
-    this.#markup.tagsContainer.replaceChildren();
-    this.#setValidityAndFormValue();
-    this.dispatchEvent(new Event('change'));
+    this.#markup.tagsContainer?.replaceChildren();
+    this.dispatchEvent(new Event('reset'));
+    requestAnimationFrame(() => this.#markup.searchInput?.focus());
   }
 
-  formDisabledCallback(isDisabled: boolean) {
-    this.disabled = isDisabled;
+  formDisabledCallback() {
+    // toDo
+    // when inside fieldset, this callback is only invoked for the first time
+    // isDisabled: boolean
   }
 
   // Instance properties
@@ -65,16 +171,14 @@ export class HTMLComboboxElement extends HTMLElement {
   }
 
   get query() {
-    return this.getAttribute('query');
+    return this.getAttribute('query')!;
   }
   set query(value: string) {
     if (value === this.query) return;
     if (value == null) value = '';
     value = String(value);
     super.setAttribute('query', value);
-    if (this.#markup.connected) {
-      this.#markup.searchInput.value = value;
-    }
+    this.#markup?.setInputValue(value);
   }
 
   get placeholder() {
@@ -84,10 +188,7 @@ export class HTMLComboboxElement extends HTMLElement {
     if (value == null) value = ' ';
     value = String(value);
     super.setAttribute('placeholder', value);
-    if (this.#markup.connected) {
-      this.#markup.placeholder.innerText = value;
-      this.#markup.searchInput.placeholder = value;
-    }
+    this.#markup?.setPlaceholder(value);
   }
 
   get clearable() {
@@ -117,7 +218,9 @@ export class HTMLComboboxElement extends HTMLElement {
   }
   set disabled(value) {
     this.#internals.ariaDisabled = String(value);
-    super.toggleAttribute('disabled', toBoolean(value));
+    value = toBoolean(value);
+    super.toggleAttribute('disabled', value);
+    super.toggleAttribute('inert', value);
   }
 
   get form() {
@@ -129,7 +232,7 @@ export class HTMLComboboxElement extends HTMLElement {
   }
 
   get length() {
-    return this.#markup.options.length;
+    return this.#markup.options!.length;
   }
 
   get multiple() {
@@ -181,36 +284,15 @@ export class HTMLComboboxElement extends HTMLElement {
   }
   set value(value: string) {
     if (this.value === value || typeof value !== 'string') return;
-    const prevValue: Set<string> = new Set(this.#values);
-    this.#values = new Set;
-
-    const values = value.split(',').filter(Boolean);
-
-    Promise.resolve(values)
-      .then(values => {
-        if (values.length) {
-          if (!this.multiple) {
-            if (this.#values.size === 0) {
-              values.length = 1;
-            } else {
-              values.length = 0;
-            }
-          }
-
-          for (const key of values) {
-            const option = this.#markup.getOptionByValue(key);
-            if (option) this.#selectOption(option);
-          }
-        }
-
-        for (const key of prevValue) {
-          if (this.#values.has(key)) continue;
-          const option = this.#markup.getOptionByValue(key);
-          const tag = this.#markup.getTagByValue(key);
-          tag?.remove();
-          option?.toggleAttribute('selected', false);
-        }
-      })
+    const nextValues = new Set(value.split(',').filter(Boolean));
+    this.#markup.options.forEach(option => {
+      const optionValue = option.value!;
+      // toggling `selected` drives #onOptionSelectedStateChanges, which is the
+      // single source of truth for #values and tags - don't pre-assign #values
+      // here, or the dedup logic there ends up deselecting the option it's in
+      // the middle of selecting (see: stale tag left behind on next selection)
+      option.selected = nextValues.has(optionValue);
+    })
   }
 
   // Instance methods
@@ -224,7 +306,7 @@ export class HTMLComboboxElement extends HTMLElement {
   }
 
   item(index: number) {
-    return this.#markup.options.item(index);
+    return this.#markup.options!.item(index);
   }
 
   // namedItem()
@@ -266,94 +348,185 @@ export class HTMLComboboxElement extends HTMLElement {
   }
 
   // Internal
-  #onInput = (event: InputEvent) => {
-    if (!this.searchable && this.filterable) {
-      if (event.target && event.target instanceof HTMLInputElement) {
-        this.#markup.sort(event.target.value);
-      }
-    }
-  }
+
 
   #onOptionsChanges = (records: MutationRecord[]) => {
     records.forEach(record => {
-      record.addedNodes.forEach(node => {
-        if (node instanceof HTMLComboboxOptionElement) {
-          node.addEventListener('click', this.#onSelectOption);
-          if (node.selected) {
-            if (this.multiple) {
-              this.#selectOption(node);
-            } else if (this.#values.size === 0) {
-              this.#selectOption(node);
-            }
+      record.removedNodes.forEach(option => {
+        if (option instanceof HTMLComboboxOptionElement) {
+
+          const value = option.value!;
+
+
+
+          // mode is searchable,
+          // user type "a", select a result,
+          // then types "b". Here previous options will be replaced with new ones,
+          // this.#values may contain "a", but there is no relevant option yet,
+          // so just wait
+          if (this.searchable && this.#internals.ariaExpanded === 'true') {
+            return;
           }
-        }
-        if (node instanceof HTMLComboboxOptionElement || node instanceof HTMLOptGroupElement) {
-          this.#markup.optionsContainer.append(node);
+          // options was removed, but values still include this value,
+          // just clear, this is like a reset was called
+          if (this.#values.has(value) && !this.#markup.optionsContainer?.querySelector(`[value="${value}"]`)) {
+            this.#values.delete(value);
+            const control = this.#markup.getTagByValue(value);
+            control?.remove();
+          }
         }
       })
     });
-    this.#markup.invalidateOptionsCache();
-    this.#setValidityAndFormValue();
   }
 
-  #selectOption(option: HTMLComboboxOptionElement) {
-    if (this.#values.has(option.value)) return;
-    const value = option.value;
-    this.#values.add(value);
-    option.toggleAttribute('selected', true);
-    const control = this.#markup.createAndAppendTag(option);
-    control?.addEventListener('click', this.#onClearTag);
-    if (!this.multiple) {
-      this.#markup.closeDropdown()
-    }
-  }
 
-  #onSelectOption = (event: PointerEvent) => {
-    const target = event.target as HTMLElement | null;
-    if (target) {
-      const option = target.closest<HTMLComboboxOptionElement>('box-option');
-      if (option) {
-        if (this.#values.has(option.value)) return;
-        if (!this.multiple) {
-          event.stopPropagation();
-          this.#values.forEach(value => {
-            this.#markup.getTagByValue(value)?.remove();
-            this.#markup.getOptionByValue(value)?.toggleAttribute('selected', false);
-          })
-          this.#values.clear();
-          this.#markup.tagsContainer.replaceChildren();
-        }
-        this.#selectOption(option);
+  #onOptionSelectedStateChanges = (event: Event) => {
+    const option = event.target as HTMLComboboxOptionElement;
+    const value = option.value!;
+
+    if (option.selected) {
+      if (!this.multiple) {
+        this.#values.forEach(value => {
+          const prevOption = this.#markup.getOptionByValue(value);
+          if (prevOption) {
+            prevOption.selected = false;
+          } else {
+            const tag = this.#markup.getTagByValue(value);
+            this.#values.delete(value);
+            tag?.remove()
+          }
+        })
+      }
+
+      if (!this.#values.has(value) || !this.#markup.getTagByValue(value)) {
+        this.#values.add(value);
+        this.#markup.createAndAppendTag(option);
         this.#setValidityAndFormValue();
         this.dispatchEvent(new Event('change'));
       }
-    }
-  }
-
-  #onClearTag = (event: PointerEvent) => {
-    const target = event.target as HTMLElement | null;
-    if (target) {
-      const tag = target.closest<HTMLComboboxTagElement>('box-tag');
-      if (tag) {
-        const value = tag.getAttribute('value');
-        const option = this.#markup.getOptionByValue(value);
-        option.removeAttribute('selected');
+    } else {
+      if (this.#values.has(value)) {
         this.#values.delete(value);
-        tag.remove();
+        const control = this.#markup.getTagByValue(value);
+        control?.remove();
         this.#setValidityAndFormValue();
         this.dispatchEvent(new Event('change'));
+      } else {
+        const tag = this.#markup.getTagByValue(value);
+        tag?.remove()
       }
+    }
+
+  }
+
+
+  #onClearTag = (event: Event) => {
+    const target = event.target as HTMLComboboxTagElement | null;
+    if (target) {
+      const option = this.#markup.getOptionByValue(target.value);
+      if (option) {
+        option.selected = false;
+      } else {
+        const tag = this.#markup.getTagByValue(target.value);
+        this.#values.delete(target.value);
+        tag?.remove()
+      }
+      requestAnimationFrame(() => {
+        if (this.#values.size) {
+          this.focus();
+        } else if (this.searchable || this.filterable) {
+          this.#markup.searchInput?.focus()
+        } else {
+          this.focus()
+        }
+      })
     }
   }
 
-  #onClear = () => {
+
+  #onClearAll = () => {
     this.formResetCallback();
   }
 
+  #onPickerToggle = (event: Event) => {
+    const state = Reflect.get(event, 'newState');
+    const oldState = Reflect.get(event, 'oldState');
+    if (state === oldState) return;
+    if (state === 'open') {
+      this.#prevValue = this.value;
+      this.#changed = true;
+    } else {
+      this.#changed = this.#prevValue !== this.value;
+      this.dispatchEvent(new Event('close'));
+    }
+  }
+
+  #onKeyDown = (event: KeyboardEvent) => {
+    if (this.#internals.ariaExpanded !== 'true') return;
+
+    const activeElement = this.shadowRoot.activeElement;
+    if (!activeElement) {
+      // ??? how we should react ???
+      return;
+    }
+
+    if (activeElement === this.#markup.searchInput && event.key === 'Enter') {
+      event.stopPropagation();
+      if (!this.searchable && this.filterable) {
+        console.log('sss')
+        this.#markup.sort(this.#markup.searchInput!.value);
+      }
+      if (this.searchable) {
+        this.dispatchEvent(new Event('search'))
+      }
+      return;
+    }
+
+    if (event.key === 'Enter' && activeElement instanceof HTMLComboboxOptionElement) {
+      if (!activeElement.selected) {
+        event.stopPropagation();
+        return;
+      }
+
+    }
+
+    if (event.key === 'Enter' && activeElement.part.contains('clear-tag')) {
+      // @ts-ignore
+      // this.#onClearTag(event);
+      // event.stopPropagation();
+      // event.preventDefault()
+      // @ts-ignore
+      activeElement.click()
+      // event.stopPropagation();
+      return;
+    }
+
+    if (event.key === 'Escape' || event.key === 'Enter') {
+      this.#markup.closeDropdown()
+      this.blur()
+    }
+  }
+
+  #onInput = () => {
+
+    this.query = this.#markup.searchInput!.value;
+    if (!this.searchable && this.filterable) {
+      this.#markup.sort(this.#markup.searchInput?.value || '');
+    }
+  }
+
   #setValidityAndFormValue() {
+    this.#markup.clearAllButton?.toggleAttribute('disabled', !Boolean(this.#values.size));
+    let empty = false;
+    if (this.#values.size === 0) empty = true;
+
+    if (this.#values.size > 0 && !this.clearable && !this.multiple && (this.searchable || this.filterable)) {
+      empty = true;
+    }
+    this.#markup.searchInput?.toggleAttribute('autofocus', empty)
     this.#internals.setFormValue(this.value);
     if (this.required && this.value === '') {
-      this.#internals.setValidity({ valueMissing: true });
+      this.#internals.setValidity({ valueMissing: true }, 'Value missing');
     } else {
       this.#internals.setValidity({ });
     }
@@ -391,7 +564,7 @@ export class HTMLComboboxElement extends HTMLElement {
   }
 }
 
-document.addEventListener('keypress', (event) => {
+document.addEventListener('keypress', () => {
   if (document.activeElement instanceof HTMLComboboxElement) {
     const maybeHost = document.activeElement.shadowRoot.activeElement;
     if (maybeHost instanceof HTMLComboboxOptionElement) {
@@ -399,6 +572,7 @@ document.addEventListener('keypress', (event) => {
     }
   }
 })
+
 
 if (!window.customElements.get('combo-box')) {
   window.customElements.define('combo-box', HTMLComboboxElement);
