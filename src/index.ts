@@ -259,18 +259,19 @@ declare global {
       'box-tag': ComboboxTagElementAttributes;
     }
   }
+
 }
 
 // Also importable explicitly (`import type { ComboboxElementAttributes } from
 // 'html-combobox-element'`), for anyone who prefers that over the ambient global above.
-export type {
-  ComboboxEvent,
-  ComboboxInputEvent,
-  ComboboxFocusEvent,
-  ComboboxElementAttributes,
-  ComboboxOptionElementAttributes,
-  ComboboxTagElementAttributes,
-};
+// export type {
+//   ComboboxEvent,
+//   ComboboxInputEvent,
+//   ComboboxFocusEvent,
+//   ComboboxElementAttributes,
+//   ComboboxOptionElementAttributes,
+//   ComboboxTagElementAttributes,
+// };
 
 // --- Framework JSX augmentations below ------------------------------------
 //

@@ -1,6 +1,6 @@
 {
   "name": "html-combobox-element",
-  "version": "0.0.3",
+  "version": "0.0.5",
   "description": "The combo-box web-component & customizable select polyfill",
   "type": "module",
   "scripts": {
@@ -8,6 +8,7 @@
     "clean": "rm -rf dist",
     "build:combobox": "tsc -b configs/tsconfig.cjs.json configs/tsconfig.esm.json configs/tsconfig.types.json",
     "build": "npm-run-all clean build:combobox",
+    "postbuild": "node scripts/fix-dual-package.mjs",
     "check-types": "tsc --noEmit"
   },
   "keywords": [
@@ -45,9 +46,14 @@
   "types": "dist/types/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/types/index.d.ts",
-      "require": "./dist/cjs/index.js",
-      "import": "./dist/esm/index.js"
+      "import": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
     }
   }
 }
