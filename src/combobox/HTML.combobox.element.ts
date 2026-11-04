@@ -25,14 +25,13 @@ export class HTMLComboboxElement extends HTMLElement {
 
     this.#internals = this.attachInternals() as ElementInternals & { states: Set<string> };
     this.#internals.role = "combobox";
-    this.#internals.ariaHasPopup = "dialog";
     this.shadowRoot = this.attachShadow({ mode: 'open', delegatesFocus: true }); //delegatesFocus: true
     this.#markup = new ComboboxMarkup(this.shadowRoot, this.#internals);
     this.shadowRoot.appendChild(ComboboxMarkup.markup.content.cloneNode(true));
     this.shadowRoot.adoptedStyleSheets = HTMLComboboxElement.styleSheet;
     this.#observer = new MutationObserver(this.#onOptionsChanges);
     this.#markup.connect();
-
+    this.#syncPopupSemantics();
   }
 
 
@@ -203,6 +202,7 @@ export class HTMLComboboxElement extends HTMLElement {
   }
   set filterable(value) {
     super.toggleAttribute('filterable', toBoolean(value));
+    this.#syncPopupSemantics();
   }
 
   get searchable() {
@@ -210,6 +210,7 @@ export class HTMLComboboxElement extends HTMLElement {
   }
   set searchable(value) {
     super.toggleAttribute('searchable', toBoolean(value));
+    this.#syncPopupSemantics();
   }
 
   // <select> specific properties (implements HTMLSelectElement)
@@ -240,6 +241,7 @@ export class HTMLComboboxElement extends HTMLElement {
   }
   set multiple(value) {
     super.toggleAttribute('multiple', toBoolean(value));
+    this.#syncPopupSemantics();
   }
 
   // get options
@@ -453,6 +455,7 @@ export class HTMLComboboxElement extends HTMLElement {
     const oldState = Reflect.get(event, 'oldState');
     if (state === oldState) return;
     if (state === 'open') {
+      this.#syncPopupSemantics();
       this.#prevValue = this.value;
       this.#changed = true;
     } else {
@@ -512,6 +515,24 @@ export class HTMLComboboxElement extends HTMLElement {
     this.query = this.#markup.searchInput!.value;
     if (!this.searchable && this.filterable) {
       this.#markup.sort(this.#markup.searchInput?.value || '');
+    }
+  }
+
+  // Without a search field the popup is just the listbox. With one, it is a dialog holding the field and the listbox.
+  #syncPopupSemantics() {
+    const withSearch = this.searchable || this.filterable;
+    this.#internals.ariaHasPopup = withSearch ? 'dialog' : 'listbox';
+    if (withSearch) {
+      this.#markup?.dropdown?.setAttribute('role', 'dialog');
+    } else {
+      this.#markup?.dropdown?.removeAttribute('role');
+    }
+    this.#markup?.optionsContainer?.setAttribute('aria-multiselectable', String(this.multiple));
+    // Shadow content can't point at the outer <label> with aria-labelledby, so it borrows the label's text.
+    const name = Array.from(this.#internals.labels ?? [], (label) => label.textContent?.trim()).filter(Boolean).join(' ');
+    for (const popup of [this.#markup?.dropdown, this.#markup?.optionsContainer]) {
+      if (name && popup?.hasAttribute('role')) popup.setAttribute('aria-label', name);
+      else popup?.removeAttribute('aria-label');
     }
   }
 

@@ -4,6 +4,9 @@ export class HTMLComboboxOptionElement extends HTMLElement {
   static OWN_IDL = new Set(['value', 'label', 'selected', 'disabled']);
   static EventInit = { bubbles: true, cancelable: true, composed: true };
 
+  // The browser only knows what `selected` means on a native <option>; here the state reaches assistive tech through internals.
+  #internals = this.attachInternals();
+
 
   static captureFocus(event: FocusEvent) {
     if (event.relatedTarget && event.relatedTarget instanceof HTMLComboboxOptionElement) {
@@ -46,6 +49,7 @@ export class HTMLComboboxOptionElement extends HTMLElement {
     this.part.add('option');
     super.setAttribute('tabindex', "0");
     super.setAttribute('role', "option");
+    this.#internals.ariaSelected = String(this.selected);
 
     if (!this.value) this.value = this.label;
     if (!this.textContent) this.textContent = this.value;
@@ -91,6 +95,7 @@ export class HTMLComboboxOptionElement extends HTMLElement {
 
     super.toggleAttribute('selected', force);
     this.part.toggle('selected', force);
+    this.#internals.ariaSelected = String(force);
     // console.log('this.isConnected', this.isConnected)
     if (this.isConnected) {
       this.dispatchEvent(new Event('optionselectedstatechange', HTMLComboboxOptionElement.EventInit));
@@ -131,8 +136,12 @@ export class HTMLComboboxOptionElement extends HTMLElement {
   }
 
   toggleAttribute(name: string, force?: boolean): boolean {
-    if (name === 'selected') this.part.toggle(name, force);
-    return super.toggleAttribute(name, force);
+    const result = super.toggleAttribute(name, force);
+    if (name === 'selected') {
+      this.part.toggle(name, result);
+      this.#internals.ariaSelected = String(result);
+    }
+    return result;
   }
 }
 

@@ -458,7 +458,7 @@ ${urls.map(url => `@import "${url}";`)}
 
 <div id="dropdown" popover="manual" part='dropdown' >
   <input placeholder='Поиск' name="search-input" part="search-input" inputmode='search' autofocus />
-  <div part="options" id='options'></div>
+  <div part="options" id='options' role="listbox"></div>
 </div>
 
 <template id='tag-template'>
