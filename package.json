@@ -9,7 +9,9 @@
     "build:combobox": "tsc -b configs/tsconfig.cjs.json configs/tsconfig.esm.json configs/tsconfig.types.json",
     "build": "npm-run-all clean build:combobox",
     "postbuild": "node scripts/fix-dual-package.mjs",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui"
   },
   "keywords": [
     "web-components",
@@ -21,6 +23,7 @@
   "license": "MIT",
   "devDependencies": {
     "@espcom/eslint-config": "latest",
+    "@playwright/test": "^1.65.0",
     "@types/node": "22.8.6",
     "@types/react": "^19.2.14",
     "c8": "10.1.2",
@@ -53,6 +56,16 @@
       "require": {
         "types": "./dist/cjs/index.d.ts",
         "default": "./dist/cjs/index.js"
+      }
+    },
+    "./playwright": {
+      "import": {
+        "types": "./dist/types/playwright.d.ts",
+        "default": "./dist/esm/playwright.js"
+      },
+      "require": {
+        "types": "./dist/cjs/playwright.d.ts",
+        "default": "./dist/cjs/playwright.js"
       }
     }
   }

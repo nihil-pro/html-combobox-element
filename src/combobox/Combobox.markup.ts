@@ -2,6 +2,14 @@ import { HTMLComboboxTagElement } from './HTML.combobox.tag.element.js';
 import { HTMLComboboxOptionElement } from './HTML.combobox.option.element.js';
 
 export class ComboboxMarkup {
+  /** Texts used only by assistive technology. Override them to localize, e.g. `HTMLComboboxElement.strings.clearAll = 'Очистить'` */
+  static strings = {
+    /** Accessible name of the clear-all button */
+    clearAll: 'Clear selection',
+    /** Accessible name prefix of a tag's clear button: "Remove Banana" */
+    removeTag: 'Remove',
+  };
+
   #shadowRoot: ShadowRoot;
   #internals: ElementInternals;
   tagsContainer: HTMLDivElement | null = null;
@@ -11,38 +19,44 @@ export class ComboboxMarkup {
   placeholder: HTMLDivElement | null = null;
   searchInput: HTMLInputElement | null = null;
   tagTemplate: HTMLComboboxTagElement | null = null;
+  internal: HTMLDivElement | null = null;
+  valueText: HTMLSpanElement | null = null;
 
   #rso: ResizeObserver;
+  #tagsObserver: MutationObserver;
   #hostWidth = 0;
   #hostHeight = 0;
   #hostTop = 0;
+  /** Set while focus is moved back to the host programmatically, so that focusin doesn't reopen the popup. */
+  #suppressOpen = false;
+  /** Set by the host when it (or its fieldset) is disabled. */
+  disabled = false;
 
   constructor(shadowRoot: ShadowRoot, internals: ElementInternals) {
     this.#shadowRoot = shadowRoot;
     this.#internals = internals;
-    window.addEventListener('click', this.onClickOutside);
-    this.#shadowRoot.host.addEventListener('focusin', this.onFocusIn);
-    this.#shadowRoot.host.addEventListener('focusout', this.onFocusOut)
+    this.#internals.ariaExpanded = 'false';
     this.#rso = new ResizeObserver(this.#onDimensionsChanges);
+    this.#tagsObserver = new MutationObserver(this.syncValueText);
   }
 
 
   connect() {
     const placeholder = this.#shadowRoot.host.getAttribute('placeholder') || `Выбрать`;
     this.tagsContainer = this.#shadowRoot.querySelector('#tags')!;
-
-    this.#rso.observe(this.#shadowRoot.host, { box: 'border-box' });
+    this.internal = this.#shadowRoot.querySelector('#internal');
+    this.valueText = this.#shadowRoot.querySelector('#value');
 
     this.optionsContainer = this.#shadowRoot.querySelector('[part*="options"]');
     this.clearAllButton = this.#shadowRoot.querySelector('[part*="clear-all"]');
-    this.clearAllButton?.addEventListener('focusout', this.onClearAllFocusOut);
+    this.clearAllButton?.setAttribute('aria-label', ComboboxMarkup.strings.clearAll);
 
     this.dropdown = this.#shadowRoot.querySelector('#dropdown');
     this.placeholder = this.#shadowRoot.querySelector('#placeholder');
     this.placeholder!.innerText = placeholder;
 
     this.searchInput = this.#shadowRoot.querySelector('[part*="search-input"]');
-    this.searchInput!.value = this.#shadowRoot.host.getAttribute('query')!;
+    this.searchInput!.value = this.#shadowRoot.host.getAttribute('query') ?? '';
 
     this.searchInput!.style.setProperty('--search-input-placeholder-color', this.placeholder!.style.color);
     const innerTemplate: HTMLTemplateElement = this.#shadowRoot.querySelector('#tag-template')!;
@@ -54,14 +68,21 @@ export class ComboboxMarkup {
     const host = this.#shadowRoot.host;
     const clearable = host.hasAttribute('clearable') || host.hasAttribute('multiple');
     this.tagTemplate!.toggleAttribute('visible', clearable);
+    window.addEventListener('click', this.onClickOutside);
+    host.addEventListener('focusin', this.onFocusIn);
+    host.addEventListener('focusout', this.onFocusOut);
+    this.#rso.observe(host, { box: 'border-box' });
+    this.#tagsObserver.observe(this.tagsContainer!, { childList: true });
+    this.syncValueText();
   }
 
   disconnect() {
-    this.#shadowRoot.host.removeEventListener('focusin', this.onFocusIn);
-    this.#shadowRoot.host.removeEventListener('focusout', this.onFocusOut);
-    this.clearAllButton?.removeEventListener('focusout', this.onClearAllFocusOut);
+    const host = this.#shadowRoot.host;
+    host.removeEventListener('focusin', this.onFocusIn);
+    host.removeEventListener('focusout', this.onFocusOut);
     window.removeEventListener('click', this.onClickOutside);
-    this.#rso.unobserve(this.#shadowRoot.host);
+    this.#rso.unobserve(host);
+    this.#tagsObserver.disconnect();
   }
 
   setPlaceholder(value: string) {
@@ -71,20 +92,30 @@ export class ComboboxMarkup {
   }
 
   setInputValue(value: string) {
-    if (this.searchInput) {
+    // Typing writes the query attribute, which comes back here: don't reset the caret
+    if (this.searchInput && this.searchInput.value !== value) {
       this.searchInput.value = value;
     }
   }
 
-  onClearAllFocusOut = (event: FocusEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (event.relatedTarget == null) {
-      const host = this.#shadowRoot.host;
-      if (!host.hasAttribute('searchable') && !host.hasAttribute('filterable')) {
-        this.closeDropdown()
-      }
-    }
+  /** The combobox value exposed to assistive technology is the text of the selected tags. */
+  syncValueText = () => {
+    if (!this.valueText || !this.tagsContainer) return;
+    const labels = Array.from(this.tagsContainer.querySelectorAll<HTMLComboboxTagElement>('box-tag'), (tag) => this.tagLabel(tag));
+    const text = labels.filter(Boolean).join(', ');
+    if (this.valueText.textContent !== text) this.valueText.textContent = text;
+    this.clearAllButton?.toggleAttribute('disabled', labels.length === 0);
+  }
+
+  tagLabel(tag: HTMLComboboxTagElement) {
+    const option = tag.value ? this.getOptionByValue(tag.value) : null;
+    if (option) return ComboboxMarkup.optionLabel(option);
+    const label = tag.querySelector('[part*="tag-label"]') ?? tag;
+    return label.textContent?.trim() ?? '';
+  }
+
+  static optionLabel(option: HTMLComboboxOptionElement) {
+    return (option.label || option.textContent || option.value || '').trim();
   }
 
   onClickOutside = (ev: MouseEvent) => {
@@ -113,6 +144,34 @@ export class ComboboxMarkup {
 
   get options() {
     return this.optionsContainer!.querySelectorAll<HTMLComboboxOptionElement>('box-option');
+  }
+
+  /** Options reachable with the keyboard: not disabled (itself or by its optgroup) and not filtered out. */
+  get navigableOptions() {
+    return Array.from(this.options).filter((option) => !ComboboxMarkup.isOptionDisabled(option) && option.style.display !== 'none' && !option.hidden);
+  }
+
+  static isOptionDisabled(option: HTMLComboboxOptionElement) {
+    return option.disabled || Boolean(option.closest('optgroup')?.disabled);
+  }
+
+  get hasSearch() {
+    const host = this.#shadowRoot.host;
+    return host.hasAttribute('searchable') || host.hasAttribute('filterable');
+  }
+
+  get expanded() {
+    return this.#internals.ariaExpanded === 'true';
+  }
+
+  /** Moves focus to the host without reopening the popup. */
+  focusHost() {
+    this.#suppressOpen = true;
+    try {
+      (this.#shadowRoot.host as HTMLElement).focus();
+    } finally {
+      this.#suppressOpen = false;
+    }
   }
 
   getTagControl(tag: HTMLComboboxTagElement) {
@@ -151,21 +210,41 @@ export class ComboboxMarkup {
   }
 
   showDropdown() {
-    this.onFocusIn()
+    this.#open();
   }
 
   onFocusIn = () => {
-    if (this.#internals.ariaExpanded === "true") return;
+    if (this.#suppressOpen) return;
+    this.#open();
+  }
+
+  #open() {
+    if (this.disabled || this.expanded) return;
     this.#hostTop = this.#shadowRoot.host.getBoundingClientRect().top;
     try {
       this.dropdown!.showPopover();
       this.#internals.ariaExpanded = "true";
     } catch (e) {
       this.#internals.ariaExpanded = "false";
+      return;
+    }
+    // When the combobox has focus and the dialog opens, move into the search field (if it asks
+    // for autofocus). The popover's own autofocus doesn't apply when the host is the focus target,
+    // and focusing synchronously from focusin would be undone by the host's own focus, so defer.
+    if (this.hasSearch && this.searchInput?.hasAttribute('autofocus')) {
+      setTimeout(() => {
+        const host = this.#shadowRoot.host;
+        const hostFocused = document.activeElement === host && !this.#shadowRoot.activeElement;
+        if (hostFocused && this.expanded && this.searchInput?.hasAttribute('autofocus')) this.searchInput.focus();
+      });
     }
   }
 
   closeDropdown() {
+    if (!this.dropdown!.matches(':popover-open')) {
+      this.#internals.ariaExpanded = "false";
+      return;
+    }
     try {
       this.dropdown!.hidePopover();
       this.#internals.ariaExpanded = "false";
@@ -174,9 +253,15 @@ export class ComboboxMarkup {
     }
   }
 
+  // Focus moving between the host and its own shadow content is not "leaving" the combobox.
+  // Wait for the focus to settle, then close only if it is really gone.
   onFocusOut = () => {
-    if (this.#internals.ariaExpanded !== "true") return;
-    this.closeDropdown();
+    if (!this.expanded) return;
+    setTimeout(() => {
+      const host = this.#shadowRoot.host;
+      if (document.activeElement === host || host.matches(':focus-within')) return;
+      this.closeDropdown();
+    });
   }
 
 
@@ -212,18 +297,23 @@ export class ComboboxMarkup {
     }
 
     button?.setAttribute('value', value);
+    if (button && !button.hasAttribute('aria-label') && !button.hasAttribute('aria-labelledby')) {
+      button.setAttribute('aria-label', `${ComboboxMarkup.strings.removeTag} ${ComboboxMarkup.optionLabel(option)}`);
+    }
     tag.setAttribute('value', value);
     this.tagsContainer!.appendChild(tag);
-    this.clearAllButton?.removeAttribute('disabled');
+    this.syncValueText();
     return button;
   }
 
   getTagByValue(value: string) {
-    return this.tagsContainer!.querySelector<HTMLComboboxTagElement>(`box-tag[value="${value}"]`)!;
+    return this.tagsContainer!.querySelector<HTMLComboboxTagElement>(`box-tag[value="${CSS.escape(value)}"]`)!;
   }
 
+  // Compared through the property, not a [value] selector: an option without a value attribute
+  // takes its text as value, like <option>
   getOptionByValue(value: string) {
-    return this.optionsContainer!.querySelector<HTMLComboboxOptionElement>(`box-option[value="${value}"]`)!;
+    return Array.from(this.options).find((option) => option.value === value) ?? null;
   }
 
   get selectedOptions() {
@@ -247,9 +337,24 @@ ${urls.map(url => `@import "${url}";`)}
     position: relative;
     anchor-name: --position;
   }
+
+  :host(:state(disabled)) {
+    pointer-events: none;
+  }
   
   
   
+  /* Carries the accessible value of the combobox (the selected labels), like the
+     displayed text of a native <select>. Visually hidden, the tags show it visually. */
+  #value {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
   #internal {
     min-block-size: 1lh;
     display: grid;
@@ -306,7 +411,6 @@ ${urls.map(url => `@import "${url}";`)}
   box-option {
     display: flex;
     border-radius: inherit;
-    content-visibility: auto;
     cursor: pointer;
     padding: inherit;
     padding-inline: .5lh;
@@ -316,6 +420,23 @@ ${urls.map(url => `@import "${url}";`)}
     background-color: color-mix(in srgb, Highlight, transparent 70%);
   }
   
+  /* Like <option label="Plum"></option>: an empty option displays its label, while its text and
+     value stay empty. Generated content is part of the option's accessible name. */
+  box-option[label]:empty::before {
+    content: attr(label);
+  }
+
+  box-option[disabled] {
+    color: GrayText;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  box-option:focus-visible {
+    outline: 1px solid Highlight;
+    outline-offset: -1px;
+  }
+
   box-option[selected] {
     background-color: Highlight;
     cursor: not-allowed;
@@ -450,21 +571,22 @@ ${urls.map(url => `@import "${url}";`)}
   }
  
 </style>
-<div id='internal' part='internal'>
-  <div id="tags" part='tags'></div>
-  <div id="placeholder" part='placeholder' tabindex='0'>Выбрать</div>
-  <button part="clear-all">✕</button>
+<span id="value" part="value"></span>
+<div id='internal' part='internal' role="group">
+  <div id="tags" part='tags' role="list"></div>
+  <div id="placeholder" part='placeholder' aria-hidden="true">Выбрать</div>
+  <button part="clear-all" type="button">✕</button>
 </div>
 
 <div id="dropdown" popover="manual" part='dropdown' >
-  <input placeholder='Поиск' name="search-input" part="search-input" inputmode='search' autofocus />
+  <input placeholder='Поиск' name="search-input" part="search-input" inputmode='search' autocomplete="off" aria-controls="options" aria-autocomplete="list" autofocus />
   <div part="options" id='options' role="listbox"></div>
 </div>
 
 <template id='tag-template'>
   <box-tag>
     <span part="tag-label"></span>
-    <div part="clear-tag" role='button' tabindex='0'>✕</div>
+    <div part="clear-tag" role='button' tabindex='0'><span aria-hidden="true">✕</span></div>
   </box-tag>
 </template>
 `
