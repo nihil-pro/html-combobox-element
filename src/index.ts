@@ -5,15 +5,29 @@
 // nothing below re-exports anything from them, from the emitted .d.ts as well - meaning
 // consumers who don't have react/preact/solid-js/vue installed never need them.
 import type {} from 'react';
-import type {} from 'react/jsx-runtime';
-import type {} from 'react/jsx-dev-runtime';
 import type {} from 'preact';
 import type {} from 'preact/jsx-runtime';
 import type {} from 'solid-js';
 import type {} from 'solid-js/jsx-runtime';
 import type {} from 'vue';
 
+import { HTMLComboboxElement as ComboboxElementClass } from './combobox/HTML.combobox.element.js';
+import type { HTMLComboboxOptionsCollection } from './combobox/HTML.combobox.options.collection.js';
+
 export * from './combobox/index.js';
+
+/**
+ * The `<combo-box>` constructor, typed the way lib.dom types built-in elements
+ * (`interface HTMLSelectElement` + `declare var HTMLSelectElement: { prototype; new() }`):
+ * the same `HTMLComboboxElement` type is what `document.createElement('combo-box')`,
+ * `querySelector('combo-box')`, `event.target`, refs and `instanceof HTMLComboboxElement` give.
+ *
+ * Runtime-wise this is the very same class object that `export *` exported before.
+ */
+export const HTMLComboboxElement: Omit<typeof ComboboxElementClass, 'prototype'> & {
+  prototype: HTMLComboboxElement;
+  new (): HTMLComboboxElement;
+} = ComboboxElementClass as any;
 
 interface HTMLComboboxTagElement extends HTMLElement {}
 
@@ -22,9 +36,15 @@ interface HTMLComboboxOptionElement extends HTMLOptionElement {
   label: string
 }
 
-interface HTMLComboboxElement extends HTMLSelectElement {
+export interface HTMLComboboxElement extends HTMLSelectElement {
   /** List of selected options value attribute */
   valueAsArray: string[];
+
+  /** Whether the value differs from when the picker opened (read it in a `close` listener). */
+  readonly changed: boolean;
+
+  /** A live `HTMLOptionsCollection`-compatible collection (not `instanceof HTMLOptionsCollection`). */
+  readonly options: HTMLOptionsCollection & HTMLComboboxOptionsCollection;
 
   multiple: boolean;
 
@@ -71,17 +91,18 @@ interface HTMLComboboxElement extends HTMLSelectElement {
   selectedOptions: HTMLCollectionOf<HTMLComboboxOptionElement>;
 
 
-  // For standard events - let TypeScript infer correctly
-  addEventListener<K extends keyof HTMLElementEventMap>(
-    type: K,
-    listener: (this: HTMLComboboxElement, ev: HTMLElementEventMap[K]) => any,
-    options?: boolean | AddEventListenerOptions
-  ): void;
-
-  // For your custom events
+  // The combobox's own event map first: it extends HTMLElementEventMap and overrides some of
+  // its keys ('change', 'input', 'focus', ...). Declared after the HTMLElementEventMap overload,
+  // it was unreachable - overload resolution always stopped at the first one.
   addEventListener<K extends keyof ComboboxEventMap>(
     type: K,
     listener: (this: HTMLComboboxElement, ev: ComboboxEventMap[K]) => any,
+    options?: boolean | AddEventListenerOptions
+  ): void;
+
+  addEventListener<K extends keyof HTMLElementEventMap>(
+    type: K,
+    listener: (this: HTMLComboboxElement, ev: HTMLElementEventMap[K]) => any,
     options?: boolean | AddEventListenerOptions
   ): void;
 
@@ -93,15 +114,15 @@ interface HTMLComboboxElement extends HTMLSelectElement {
   ): void;
 
   // Similar for removeEventListener
-  removeEventListener<K extends keyof HTMLElementEventMap>(
-    type: K,
-    listener: (this: HTMLComboboxElement, ev: HTMLElementEventMap[K]) => any,
-    options?: boolean | EventListenerOptions
-  ): void;
-
   removeEventListener<K extends keyof ComboboxEventMap>(
     type: K,
     listener: (this: HTMLComboboxElement, ev: ComboboxEventMap[K]) => any,
+    options?: boolean | EventListenerOptions
+  ): void;
+
+  removeEventListener<K extends keyof HTMLElementEventMap>(
+    type: K,
+    listener: (this: HTMLComboboxElement, ev: HTMLElementEventMap[K]) => any,
     options?: boolean | EventListenerOptions
   ): void;
 
@@ -123,6 +144,12 @@ interface ComboboxEventMap extends HTMLElementEventMap {
   // "select": ComboboxEvent;
   "selectionchange": ComboboxEvent;
   "selectstart": ComboboxEvent;
+  /** The picker closed (read `event.target.changed`) */
+  "close": ComboboxEvent;
+  /** Enter was pressed in the search field */
+  "search": ComboboxEvent;
+  /** The owner form was reset */
+  "reset": ComboboxEvent;
 }
 
 /** Own attributes/properties of `<combo-box>`, shared by every JSX integration below. */
@@ -179,6 +206,12 @@ export interface ComboboxJsxAttributes {
   required?: boolean;
 
   disabled?: boolean;
+
+  /** The name the value is submitted under (`<combo-box>` is form-associated). */
+  name?: string;
+
+  /** The id of the `<form>` this combobox belongs to, when it isn't inside it. */
+  form?: string;
 }
 
 export interface ComboboxOptionJsxAttributes {
@@ -249,9 +282,8 @@ declare global {
   type ComboboxOptionElementAttributes = ComboboxCommonAttributes & ComboboxOptionJsxAttributes;
   type ComboboxTagElementAttributes = ComboboxCommonAttributes;
 
-  // Classic global JSX namespace (React <19 without `jsxImportSource`, older Preact/Solid
-  // setups that never opt into module-scoped JSX). Safe because it only uses our own
-  // framework-agnostic attribute types above.
+  // Classic global JSX namespace (frameworks that never opted into module-scoped JSX; with
+  // @types/react 18 also the base React.JSX is built on). Framework-agnostic attribute types.
   namespace JSX {
     interface IntrinsicElements {
       'combo-box': ComboboxElementAttributes;
@@ -275,45 +307,67 @@ declare global {
 
 // --- Framework JSX augmentations below ------------------------------------
 //
-// KNOWN LIMITATION: under the automatic JSX runtime (`jsx: "react-jsx"`, or
-// `jsx: "preserve"` + `jsxImportSource`), TypeScript resolves `JSX.IntrinsicElements`
-// through `<jsxImportSource>/jsx-runtime`, and it only honors declaration-merging
-// augmentations of that module when they live in a project-local file - NOT when
-// they ship from a `node_modules` package (verified against real React/Preact/Solid
-// projects; this holds for every augmentation shape/target, it's not specific to how
-// these are written below). These declarations are kept because they're harmless and
-// may still help in toolchains that don't hit that limitation, but the augmentation
-// that actually activates for you needs to be copied into your own project - see the
-// per-framework snippets in the README.
+// The augmentations below ship with the package and apply from node_modules for every JSX mode:
+// classic `React.JSX`, `react/jsx-runtime`, `react/jsx-dev-runtime` (see tests/types). They only
+// exist in a TypeScript program that includes this package's .d.ts: a workspace package that
+// renders <combo-box> but never imports this package needs `import type {} from 'html-combobox-element'`.
 
-// React
+// React. Built on React's own attribute and event types: React passes SyntheticEvents to the
+// handlers it knows (onChange, onInput, onFocus, onClick, ...), not DOM events. Events React
+// doesn't know ("close", "search") are attached by React 19 as native listeners under the exact,
+// case-sensitive prop name, so only the lowercase `onclose`/`onsearch` are declared.
 declare module 'react' {
+  /** A React event whose `target` is the element (events from the shadow DOM are retargeted to it). */
+  type ComboboxSyntheticEvent<T, E extends globalThis.Event = globalThis.Event> = import('react').SyntheticEvent<T, E> & { target: EventTarget & T };
+
+  // (Qualified as import('react') so the names resolve even when React's types enter the program
+  // only through this augmentation - TypeScript 7 doesn't put them in scope otherwise.)
+  type ComboboxBaseHTMLAttributes<T> = import('react').HTMLAttributes<T>;
+  type ComboboxBaseHostAttributes<T> = Omit<import('react').HTMLAttributes<T>, 'onInput'>;
+
+  interface ComboboxHTMLAttributes<T> extends ComboboxBaseHostAttributes<T>, ComboboxJsxAttributes {
+    class?: string | undefined;
+
+    /** The user changed the selection (`event.target.value` is the new value). */
+    onChange?: import('react').EventHandler<ComboboxSyntheticEvent<T>> | undefined;
+    /** The user typed in the search field (`event.target.query`); `nativeEvent` is its InputEvent. */
+    onInput?: import('react').EventHandler<ComboboxSyntheticEvent<T, globalThis.InputEvent>> | undefined;
+    onInvalid?: import('react').EventHandler<ComboboxSyntheticEvent<T>> | undefined;
+
+    /** Native listener: the picker closed (`event.target.changed`). Lowercase - `onClose` never fires. */
+    onclose?: ((event: ComboboxEvent) => void) | undefined;
+    /** Native listener: Enter in the search field. Lowercase - `onSearch` never fires. */
+    onsearch?: ((event: ComboboxEvent) => void) | undefined;
+  }
+
+  interface ComboboxOptionHTMLAttributes<T> extends ComboboxBaseHTMLAttributes<T>, ComboboxOptionJsxAttributes {
+    class?: string | undefined;
+  }
+
+  interface ComboboxTagHTMLAttributes<T> extends ComboboxBaseHTMLAttributes<T> {
+    class?: string | undefined;
+  }
+
+  /**
+   * @types/react 18 builds React.JSX.IntrinsicElements on top of the global JSX namespace, so
+   * its entries must stay assignable to the framework-agnostic global ones (catch-all `on*`,
+   * native event types): with React 18 types the global entries are kept as they are.
+   * @types/react 19 has no global JSX namespace: React.JSX gets React-typed props.
+   * (React 18 types declare the HTML elements in the global namespace, React 19 types don't.)
+   */
+  type ComboboxIntrinsicElement<Global, Typed> = globalThis.JSX.IntrinsicElements extends { div: unknown } ? Global : Typed;
+
   namespace JSX {
     interface IntrinsicElements {
-      'combo-box': ComboboxElementAttributes;
-      'box-option': ComboboxOptionElementAttributes;
-      'box-tag': ComboboxTagElementAttributes;
+      'combo-box': ComboboxIntrinsicElement<ComboboxElementAttributes, import('react').ClassAttributes<HTMLComboboxElement> & ComboboxHTMLAttributes<HTMLComboboxElement>>;
+      'box-option': ComboboxIntrinsicElement<ComboboxOptionElementAttributes, import('react').ClassAttributes<HTMLComboboxOptionElement> & ComboboxOptionHTMLAttributes<HTMLComboboxOptionElement>>;
+      'box-tag': ComboboxIntrinsicElement<ComboboxTagElementAttributes, import('react').ClassAttributes<HTMLComboboxTagElement> & ComboboxTagHTMLAttributes<HTMLComboboxTagElement>>;
     }
   }
 }
-declare module 'react/jsx-runtime' {
-  namespace JSX {
-    interface IntrinsicElements {
-      'combo-box': ComboboxElementAttributes;
-      'box-option': ComboboxOptionElementAttributes;
-      'box-tag': ComboboxTagElementAttributes;
-    }
-  }
-}
-declare module 'react/jsx-dev-runtime' {
-  namespace JSX {
-    interface IntrinsicElements {
-      'combo-box': ComboboxElementAttributes;
-      'box-option': ComboboxOptionElementAttributes;
-      'box-tag': ComboboxTagElementAttributes;
-    }
-  }
-}
+// No separate 'react/jsx-runtime' / 'react/jsx-dev-runtime' augmentations: their JSX namespaces
+// extend React.JSX (and before @types/react 18.2.7 they used the global one). Declaring the
+// elements there too would clash with the snippet older READMEs told users to copy (TS2717).
 
 // Preact
 declare module 'preact' {

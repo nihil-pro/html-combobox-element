@@ -1,8 +1,12 @@
 {
   "name": "html-combobox-element",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "The combo-box web-component & customizable select polyfill",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nihil-pro/html-combobox-element.git"
+  },
   "scripts": {
     "prepare": "husky",
     "clean": "rm -rf dist",
@@ -11,7 +15,8 @@
     "postbuild": "node scripts/fix-dual-package.mjs",
     "check-types": "tsc --noEmit",
     "test": "playwright test",
-    "test:ui": "playwright test --ui"
+    "test:ui": "playwright test --ui",
+    "test:types": "playwright test -c playwright.types.config.ts"
   },
   "keywords": [
     "combo-box",
@@ -26,6 +31,7 @@
     "@playwright/test": "^1.65.0",
     "@types/node": "22.8.6",
     "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "c8": "10.1.2",
     "esbuild": "0.25.5",
     "husky": "9.1.5",
@@ -33,11 +39,36 @@
     "npm-run-all": "^4.1.5",
     "preact": "^10.28.4",
     "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "solid-js": "^1.9.11",
     "tsx": "^4.19.2",
     "typescript": "5.9.3",
     "vue": "^3.5.28",
     "xml-splitter": "1.2.1"
+  },
+  "peerDependencies": {
+    "@types/react": "*",
+    "react": "*",
+    "preact": "*",
+    "solid-js": "*",
+    "vue": "*"
+  },
+  "peerDependenciesMeta": {
+    "@types/react": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "preact": {
+      "optional": true
+    },
+    "solid-js": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
   },
   "sideEffect": false,
   "files": [

@@ -1,0 +1,5 @@
+{
+  // The package checked on its own (its CI job, its editor session, tsc -b, ...).
+  "compilerOptions": { "strict": true, "target": "es2022", "lib": ["es2022", "dom", "dom.iterable"], "module": "esnext", "moduleResolution": "bundler", "jsx": "react-jsx", "skipLibCheck": true, "types": [], "noEmit": true },
+  "include": ["src"]
+}

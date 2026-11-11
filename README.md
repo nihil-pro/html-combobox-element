@@ -145,37 +145,38 @@ Playwright names a custom element from `<label for>` only for native controls,
 so query `getByRole('combobox', { name })` with `aria-label` or `aria-labelledby` on the `<combo-box>`, or without a name.
 
 ## TypeScript and JSX
-JSX/template type-checking only picks up custom element typings from a file in your own project - not from a package's shipped `.d.ts`.
-Due to this TypeScript limitation that affects any library adding custom elements to `JSX.IntrinsicElements` under the modern automatic JSX runtime – using `<combo-box>` in JSX or a Vue template needs one extra step. 
+`import 'html-combobox-element'` also brings the typings: `document.createElement('combo-box')`, `querySelector`, `addEventListener` with the combobox's own events (`change`, `input`, `close`, `search`, `reset`, with a typed `event.target`) and `instanceof HTMLComboboxElement` all use the same `HTMLComboboxElement` type.
 
-So, in addition to `import 'html-combobox-element'`, create and include one small file in tsconfig.json, with the snippet for your framework: 
+### React
+Nothing to add: `<combo-box>`, `<box-option>` and `<box-tag>` are typed with React's own types (`ref`, `style`, every DOM handler, `aria-*`...), for `jsx: "react-jsx"`, `"react-jsxdev"` and classic `"react"`.
 
-<details>
-<summary><strong>React</strong> (<code>jsx: "react-jsx"</code>)</summary>
+React wraps events in its own SyntheticEvents, so handlers are typed accordingly:
+- `onChange`, `onInput`, `onFocus`, `onClick`, ... receive a SyntheticEvent: `event.target` is the `<combo-box>` (`event.target.value`, `event.target.query`), `event.nativeEvent` is the DOM event.
+- Events React doesn't know are attached by React 19 as native listeners under the exact, case-sensitive name: use `onclose` and `onsearch` (lowercase). `onClose`/`onSearch` never fire, and are type errors.
 
-```ts
-// combo-box.d.ts
-declare module 'react/jsx-runtime' {
-  namespace JSX {
-    interface IntrinsicElements {
-      'combo-box': ComboboxElementAttributes;
-      'box-option': ComboboxOptionElementAttributes;
-      'box-tag': ComboboxTagElementAttributes;
-    }
-  }
-}
-declare module 'react/jsx-dev-runtime' {
-  namespace JSX {
-    interface IntrinsicElements {
-      'combo-box': ComboboxElementAttributes;
-      'box-option': ComboboxOptionElementAttributes;
-      'box-tag': ComboboxTagElementAttributes;
-    }
-  }
-}
+```tsx
+<combo-box
+  name="fruit"
+  multiple
+  onChange={(event) => setFruits(event.target.valueAsArray)}
+  onclose={(event) => event.target.changed && save()}
+>
+  <box-option value="apple">Apple</box-option>
+</combo-box>
 ```
 
-</details>
+With `@types/react` 18 the framework-agnostic typings are used, as in previous versions.
+
+If you copied the React `combo-box.d.ts` snippet from the README of a previous version, delete it: it still compiles, but it keeps the old typings.
+
+### Monorepos
+The typings are part of a TypeScript program only if the program includes this package. A workspace package that renders `<combo-box>` but leaves the import to the app shell type-checks inside the app, but not on its own (its CI, editor, project references). Add a type-only import there - it's removed from the JS output, nothing is registered twice:
+```ts
+import type {} from 'html-combobox-element';
+```
+
+### Other frameworks
+JSX/template type-checking for these needs one small file in your project, with the snippet for your framework:
 
 <details>
 <summary><strong>Preact</strong> (<code>jsx: "react-jsx"</code>, <code>jsxImportSource: "preact"</code>)</summary>
