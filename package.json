@@ -1,6 +1,6 @@
 {
   "name": "html-combobox-element",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "The combo-box web-component & customizable select polyfill",
   "type": "module",
   "scripts": {
@@ -14,10 +14,10 @@
     "test:ui": "playwright test --ui"
   },
   "keywords": [
-    "web-components",
-    "custom elements",
     "combo-box",
-    "combobox"
+    "combobox",
+    "dropdown",
+    "select"
   ],
   "author": "Roman Konstantin",
   "license": "MIT",
