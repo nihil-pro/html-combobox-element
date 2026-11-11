@@ -77,6 +77,7 @@ export class HTMLComboboxElement extends HTMLElement {
     this.#initialAttributesSynchronization();
     this.#observer.observe(this.#markup.optionsContainer!, HTMLComboboxElement.observerOptions);
     this.addEventListener('keydown', this.#onKeyDown);
+    this.addEventListener('click', this.#onHostClick);
     this.#markup.clearAllButton!.addEventListener('click', this.#onClearAll);
     this.#markup.searchInput!.addEventListener('input', this.#onInput);
     this.#markup.dropdown!.addEventListener('toggle', this.#onPickerToggle);
@@ -176,6 +177,7 @@ export class HTMLComboboxElement extends HTMLElement {
     this.#observer.disconnect();
     this.#markup.disconnect();
     this.removeEventListener('keydown', this.#onKeyDown);
+    this.removeEventListener('click', this.#onHostClick);
     this.#markup.clearAllButton!.removeEventListener('click', this.#onClearAll);
     this.#markup.searchInput!.removeEventListener('input', this.#onInput);
     this.#markup.dropdown!.removeEventListener('toggle', this.#onPickerToggle);
@@ -570,6 +572,18 @@ export class HTMLComboboxElement extends HTMLElement {
     } else {
       this.#markup.focusHost();
     }
+  }
+
+  // The dropdown opens when focus arrives. A combobox that keeps focus after it closed (an option
+  // was picked, Escape) gets no new focus from a click, so the click itself opens it.
+  // Not for clicks inside the dropdown (picking an option) or on the tag/clear buttons.
+  #onHostClick = (event: MouseEvent) => {
+    if (this.#isDisabled || this.#markup.expanded) return;
+    const path = event.composedPath();
+    if (this.#markup.dropdown && path.includes(this.#markup.dropdown)) return;
+    const onButton = path.some((node) => node instanceof Element && /\bclear-(tag|all)\b/.test(node.getAttribute('part') ?? ''));
+    if (onButton) return;
+    this.#markup.showDropdown();
   }
 
   // Picking an option with the pointer: toggles it (multiple) or selects it and closes (single),

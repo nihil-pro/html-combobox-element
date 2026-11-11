@@ -127,4 +127,82 @@ test.describe('pointer', () => {
     await option(page, 'date').click();
     expect(await value(page)).toBe('date');
   });
+
+  test('clicking the combobox again after picking an option reopens it', async ({ mount, page }) => {
+    await mount(BASIC());
+    await page.locator('combo-box').click();
+    await option(page, 'banana').click();
+    await expect.poll(() => isOpen(page)).toBe(false);
+    expect(await innerFocus(page)).toBe('host');
+    await page.locator('combo-box').click();
+    expect(await isOpen(page)).toBe(true);
+  });
+
+  test('clicking the combobox reopens it after Escape', async ({ mount, page }) => {
+    await mount(BASIC());
+    await page.locator('combo-box').click();
+    await page.keyboard.press('Escape');
+    expect(await isOpen(page)).toBe(false);
+    await page.locator('combo-box').click();
+    expect(await isOpen(page)).toBe(true);
+  });
+
+  test('clicking the combobox reopens it after a keyboard selection', async ({ mount, page }) => {
+    await mount(BASIC());
+    await page.locator('combo-box').focus();
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    expect(await isOpen(page)).toBe(false);
+    await page.locator('combo-box').click();
+    expect(await isOpen(page)).toBe(true);
+  });
+
+  test('a reopened filterable combobox focuses its search field', async ({ mount, page }) => {
+    await mount(BASIC('filterable'));
+    await page.locator('combo-box').click();
+    await page.keyboard.press('Escape');
+    await page.locator('combo-box').click();
+    expect(await isOpen(page)).toBe(true);
+    await expect.poll(() => innerFocus(page)).toBe('search-input');
+  });
+
+  test('a first click opens it once (focus and click together do not toggle it closed)', async ({ mount, page }) => {
+    await mount(BASIC());
+    await page.locator('combo-box').click();
+    await page.waitForTimeout(50);
+    expect(await isOpen(page)).toBe(true);
+  });
+
+  test('picking an option does not reopen it (the click inside the dropdown is ignored)', async ({ mount, page }) => {
+    await mount(BASIC());
+    await page.locator('combo-box').click();
+    await option(page, 'cherry').click();
+    await page.waitForTimeout(50);
+    expect(await isOpen(page)).toBe(false);
+  });
+
+  test('removing a tag of a closed combobox does not open it', async ({ mount, page }) => {
+    await mount(BASIC('clearable value="apple"'));
+    await page.locator('combo-box').focus();
+    await page.keyboard.press('Escape');
+    await page.locator('combo-box [part="clear-tag"]').click();
+    await page.waitForTimeout(50);
+    expect(await page.locator('combo-box').evaluate((el: any) => el.value)).toBe('');
+    expect(await isOpen(page)).toBe(false);
+  });
+
+  test('clear-all on a closed combobox does not open it', async ({ mount, page }) => {
+    await mount(BASIC('multiple value="apple,banana"'));
+    await page.locator('combo-box').focus();
+    await page.keyboard.press('Escape');
+    await page.locator('combo-box [part="clear-all"]').click();
+    await page.waitForTimeout(50);
+    expect(await isOpen(page)).toBe(false);
+  });
+
+  test('clicking a disabled combobox does not open it', async ({ mount, page }) => {
+    await mount(BASIC('disabled'));
+    await page.locator('combo-box').dispatchEvent('click');
+    expect(await isOpen(page)).toBe(false);
+  });
 });
