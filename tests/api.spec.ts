@@ -76,7 +76,7 @@ test.describe('initial state from markup', () => {
   });
 });
 
-test.describe('HTMLSelectElement-like API', () => {
+test.describe('Implements HTMLSelectElement API', () => {
   test('type is select-one / select-multiple', async ({ mount, page }) => {
     await mount(`<combo-box id="a">${FRUITS}</combo-box><combo-box id="b" multiple>${FRUITS}</combo-box>`);
     expect(await page.evaluate(() => [(document.getElementById('a') as any).type, (document.getElementById('b') as any).type]))
@@ -238,7 +238,7 @@ test.describe('HTMLSelectElement-like API', () => {
   });
 });
 
-test.describe('forms', () => {
+test.describe('Participates in forms like native control', () => {
   const FORM = (attrs = '') => `
     <form>
       <combo-box name="fruit" ${attrs}>${FRUITS}</combo-box>
@@ -345,7 +345,7 @@ test.describe('forms', () => {
   });
 });
 
-test.describe('dynamic options (framework renderers)', () => {
+test.describe('Supports different framework renderer styles)', () => {
   test('appendChild adds an option into the listbox', async ({ mount, page }) => {
     await mount(`<combo-box>${FRUITS}</combo-box>`);
     await evalCombo(page, (el) => {
@@ -354,7 +354,7 @@ test.describe('dynamic options (framework renderers)', () => {
     expect(await evalCombo(page, (el) => [el.length, el.item(4).value])).toEqual([5, 'fig']);
   });
 
-  test('insertBefore with a null reference appends (Vue/Preact)', async ({ mount, page }) => {
+  test('insertBefore with a null reference appends [Vue/Preact]', async ({ mount, page }) => {
     await mount(`<combo-box>${FRUITS}</combo-box>`);
     await evalCombo(page, (el) => {
       const o = document.createElement('box-option') as any; o.value = 'fig'; el.insertBefore(o, null);

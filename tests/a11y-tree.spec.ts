@@ -1,8 +1,9 @@
 import { test, expect, FRUITS, descendants, shape, settle, type AxNode } from './fixtures';
 
 /**
- * These tests read Chrome's real accessibility tree (DevTools protocol), the same tree that
- * screen readers consume. Roles and states set through ElementInternals are only visible there,
+ * These tests read Chrome's real accessibility tree (DevTools protocol),
+ * the same tree that screen readers consume.
+ * Roles and states set through ElementInternals are only visible there,
  * not through Playwright's getByRole() (which can only see ARIA attributes).
  */
 

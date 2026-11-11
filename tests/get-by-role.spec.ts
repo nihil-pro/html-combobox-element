@@ -3,8 +3,8 @@ import { test, expect, FRUITS } from './fixtures';
 /**
  * Playwright's role engine reads ARIA attributes only (ElementInternals is private to the element),
  * so these work thanks to the role/aria-* attributes mirrored from internals.
- * Note: Playwright names a custom element from <label for> only for native controls, so the
- * combobox is queried without a name here, or named with aria-label.
+ * Note: Playwright names a custom element from <label for> only for native controls,
+ * so the combobox is queried without a name here, or named with aria-label.
  */
 
 const PAGE = (attrs = '', options = FRUITS) => `<combo-box aria-label="Fruit" ${attrs}>${options}</combo-box>`;

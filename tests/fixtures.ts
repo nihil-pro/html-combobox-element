@@ -2,7 +2,7 @@ import { test as base, expect, type Page, type Locator } from '@playwright/test'
 import fs from 'node:fs';
 import { BUNDLE_PATH } from './global-setup';
 
-export { expect };
+export { expect, type Page };
 
 const ORIGIN = 'http://combobox.test';
 

@@ -2,8 +2,8 @@ import { test as base, expect, axTree, settle, type Page } from './fixtures';
 import { registerCombobox } from '../src/playwright';
 
 /**
- * Playwright's own selectOption / toHaveValue / toHaveValues / getByLabel on <combo-box>, with the
- * engine from `html-combobox-element/playwright` registered, exactly as the README describes.
+ * Playwright's own selectOption / toHaveValue / toHaveValues / getByLabel on <combo-box>,
+ * with the engine from `html-combobox-element/playwright` registered, exactly as the README describes.
  * Every scenario runs on a native <select> and on a <combo-box> with the same options.
  */
 const test = base.extend<{}, { comboboxSelectApi: void }>({

@@ -14,7 +14,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? 'dot' : 'list',
+  reporter: [['json', { outputFile: 'results.json' }]],
+  // reporter: process.env.CI ? 'dot' : 'list',
   use: {
     trace: 'retain-on-failure',
   },

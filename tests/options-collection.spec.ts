@@ -1,8 +1,9 @@
 import { test, expect, settle, trackChanges, changes } from './fixtures';
 
 /**
- * `combobox.options` is checked against the real thing: every scenario runs the same operations
- * on a native <select> and on a <combo-box> with the same options, and compares the results.
+ * `combobox.options` is checked against the real thing:
+ * every scenario runs the same operations on a native <select>
+ * and on a <combo-box> with the same options, and compares the results.
  */
 
 const SAME_OPTIONS = {

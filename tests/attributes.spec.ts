@@ -1,9 +1,9 @@
 import { test, expect, FRUITS, settle, axTree, trackChanges, changes, type Page } from './fixtures';
 
-/**
- * Attributes can change through many paths. The setters (and the setAttribute/removeAttribute
- * overrides routed to them) normalize; attributeChangedCallback applies the side effects, so every
- * path ends in the same state: property, ARIA, accessibility tree and the combobox value.
+/** Attributes can change through many paths.
+ * The setters (and the setAttribute/removeAttribute overrides routed to them) normalize;
+ * attributeChangedCallback applies the side effects,
+ * so every path ends in the same state: property, ARIA, accessibility tree and the combobox value.
  */
 
 /** Evaluate `source` (a function of the combobox element) in Playwright's main world. */
@@ -103,13 +103,13 @@ test.describe('box-option selected: every path selects the same way', () => {
     expect(tree.get('option', 'Date').props.selected).toBe(true);
   });
 
-  test('single mode: a native setAttribute on another option deselects the previous one', async ({ mount, page }) => {
+  test('[single mode]: a native setAttribute on another option deselects the previous one', async ({ mount, page }) => {
     await mount(`<combo-box aria-label="Fruit" value="apple">${FRUITS}</combo-box>`);
     await page.evaluate(`Element.prototype.setAttribute.call(${OPTION('date')}, 'selected', '')`);
     expect(await optionState(page, 'apple')).toMatchObject({ selected: false, ariaSelected: 'false', hostValue: 'date', tags: 1 });
   });
 
-  test('multiple mode: native setAttribute adds to the selection', async ({ mount, page }) => {
+  test('[multiple mode]: native setAttribute adds to the selection', async ({ mount, page }) => {
     await mount(`<combo-box aria-label="Fruit" multiple value="apple">${FRUITS}</combo-box>`);
     await page.evaluate(`Element.prototype.setAttribute.call(${OPTION('date')}, 'selected', '')`);
     expect(await optionState(page, 'date')).toMatchObject({ hostValue: 'apple,date', tags: 2 });
