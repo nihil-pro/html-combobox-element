@@ -1,0 +1,5 @@
+{
+  // The shell's own program: includes everything it imports, ui packages' sources too.
+  "compilerOptions": { "strict": true, "target": "es2022", "lib": ["es2022", "dom", "dom.iterable"], "module": "esnext", "moduleResolution": "bundler", "jsx": "react-jsx", "skipLibCheck": true, "types": [], "noEmit": true },
+  "include": ["src"]
+}

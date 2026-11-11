@@ -1,0 +1,16 @@
+{
+  "name": "@demo/shell",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@demo/ui": "*",
+    "@demo/ui-typed": "*",
+    "html-combobox-element": "file:../../../html-combobox-element.tgz",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0"
+  }
+}

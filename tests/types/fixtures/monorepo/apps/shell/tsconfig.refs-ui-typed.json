@@ -1,0 +1,5 @@
+{
+  "compilerOptions": { "strict": true, "target": "es2022", "lib": ["es2022", "dom", "dom.iterable"], "module": "esnext", "moduleResolution": "bundler", "jsx": "react-jsx", "skipLibCheck": true, "types": [], "outDir": ".out/refs-ui-typed", "rootDir": "src" },
+  "files": ["src/register.ts", "src/uses-ui-typed.tsx"],
+  "references": [{ "path": "../../packages/ui-typed/tsconfig.build.json" }]
+}

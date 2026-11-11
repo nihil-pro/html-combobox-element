@@ -1,0 +1,9 @@
+{
+  "name": "monorepo-npm",
+  "private": true,
+  "type": "module",
+  "workspaces": ["apps/*", "packages/*"],
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}
