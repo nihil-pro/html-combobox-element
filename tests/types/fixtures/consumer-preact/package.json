@@ -1,0 +1,14 @@
+{
+  "name": "consumer-preact",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "html-combobox-element": "file:../html-combobox-element.tgz",
+    "preact": "^10.27.0"
+  },
+  "devDependencies": {
+    "ts59": "npm:typescript@5.9.3",
+    "ts60": "npm:typescript@~6.0.3",
+    "ts70": "npm:typescript@~7.0.2"
+  }
+}
