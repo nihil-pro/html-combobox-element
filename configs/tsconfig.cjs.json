@@ -4,6 +4,10 @@
   "compilerOptions": {
     "outDir": "../dist/cjs",
     "module": "commonjs",
-    "target": "ES2022"
+    // Same as the ESM build. With an ES20xx target TypeScript rewrites a class's references to
+    // itself as an alias (`_a`) assigned after the class body, so static initializers that use
+    // the class (`static observedAttributes = [...HTMLComboboxElement.OWN_IDL]`) threw on load.
+    // The emitted syntax is otherwise identical. Guarded by tests/cjs-build.spec.ts.
+    "target": "esnext"
   }
 }
