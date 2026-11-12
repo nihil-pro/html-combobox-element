@@ -317,51 +317,86 @@ declare global {
 // doesn't know ("close", "search") are attached by React 19 as native listeners under the exact,
 // case-sensitive prop name, so only the lowercase `onclose`/`onsearch` are declared.
 declare module 'react' {
-  /** A React event whose `target` is the element (events from the shadow DOM are retargeted to it). */
-  type ComboboxSyntheticEvent<T, E extends globalThis.Event = globalThis.Event> = import('react').SyntheticEvent<T, E> & { target: EventTarget & T };
+  // Only names that both @types/react and preact/compat export are used here (HTMLAttributes, Key,
+  // Ref): with `paths: { "react": ["preact/compat"] }` this augmentation lands on preact/compat,
+  // which has no SyntheticEvent / ClassAttributes.
+
+  /**
+   * The event React passes to the handlers it manages: React's SyntheticEvent (same members), with
+   * `target` being the element (events from the shadow DOM are retargeted to it).
+   */
+  interface ComboboxSyntheticEvent<T, E extends globalThis.Event = globalThis.Event> {
+    nativeEvent: E;
+    currentTarget: EventTarget & T;
+    target: EventTarget & T;
+    bubbles: boolean;
+    cancelable: boolean;
+    defaultPrevented: boolean;
+    eventPhase: number;
+    isTrusted: boolean;
+    timeStamp: number;
+    type: string;
+    preventDefault(): void;
+    isDefaultPrevented(): boolean;
+    stopPropagation(): void;
+    isPropagationStopped(): boolean;
+    persist(): void;
+  }
+
+  /** Bivariant like React's EventHandler, so React's own handler types (ChangeEventHandler...) fit. */
+  type ComboboxEventHandler<E> = { bivarianceHack(event: E): void }['bivarianceHack'];
+
+  /** React's ClassAttributes: `key` and a typed `ref`. */
+  interface ComboboxClassAttributes<T> {
+    key?: import('react').Key | null | undefined;
+    ref?: import('react').Ref<T> | undefined;
+  }
 
   // (Qualified as import('react') so the names resolve even when React's types enter the program
   // only through this augmentation - TypeScript 7 doesn't put them in scope otherwise.)
-  type ComboboxBaseHTMLAttributes<T> = import('react').HTMLAttributes<T>;
-  type ComboboxBaseHostAttributes<T> = Omit<import('react').HTMLAttributes<T>, 'onInput'>;
-
-  interface ComboboxHTMLAttributes<T> extends ComboboxBaseHostAttributes<T>, ComboboxJsxAttributes {
+  // Type aliases rather than `interface extends`: React's attributes are replaced, not checked
+  // for compatibility, which also keeps these valid against preact/compat's HTMLAttributes.
+  type ComboboxBaseHTMLAttributes<T extends EventTarget, Own> = Omit<import('react').HTMLAttributes<T>, keyof Own | 'class'> & Own & {
     class?: string | undefined;
+  };
 
+  type ComboboxHTMLAttributes<T extends EventTarget> = ComboboxBaseHTMLAttributes<T, ComboboxJsxAttributes & {
     /** The user changed the selection (`event.target.value` is the new value). */
-    onChange?: import('react').EventHandler<ComboboxSyntheticEvent<T>> | undefined;
+    onChange?: ComboboxEventHandler<ComboboxSyntheticEvent<T>> | undefined;
     /** The user typed in the search field (`event.target.query`); `nativeEvent` is its InputEvent. */
-    onInput?: import('react').EventHandler<ComboboxSyntheticEvent<T, globalThis.InputEvent>> | undefined;
-    onInvalid?: import('react').EventHandler<ComboboxSyntheticEvent<T>> | undefined;
+    onInput?: ComboboxEventHandler<ComboboxSyntheticEvent<T, globalThis.InputEvent>> | undefined;
+    onInvalid?: ComboboxEventHandler<ComboboxSyntheticEvent<T>> | undefined;
 
     /** Native listener: the picker closed (`event.target.changed`). Lowercase - `onClose` never fires. */
     onclose?: ((event: ComboboxEvent) => void) | undefined;
     /** Native listener: Enter in the search field. Lowercase - `onSearch` never fires. */
     onsearch?: ((event: ComboboxEvent) => void) | undefined;
-  }
+  }>;
 
-  interface ComboboxOptionHTMLAttributes<T> extends ComboboxBaseHTMLAttributes<T>, ComboboxOptionJsxAttributes {
-    class?: string | undefined;
-  }
+  type ComboboxOptionHTMLAttributes<T extends EventTarget> = ComboboxBaseHTMLAttributes<T, ComboboxOptionJsxAttributes>;
 
-  interface ComboboxTagHTMLAttributes<T> extends ComboboxBaseHTMLAttributes<T> {
-    class?: string | undefined;
-  }
+  type ComboboxTagHTMLAttributes<T extends EventTarget> = ComboboxBaseHTMLAttributes<T, {}>;
 
   /**
-   * @types/react 18 builds React.JSX.IntrinsicElements on top of the global JSX namespace, so
-   * its entries must stay assignable to the framework-agnostic global ones (catch-all `on*`,
-   * native event types): with React 18 types the global entries are kept as they are.
-   * @types/react 19 has no global JSX namespace: React.JSX gets React-typed props.
-   * (React 18 types declare the HTML elements in the global namespace, React 19 types don't.)
+   * Which props to use:
+   * - @types/react 19: React-typed props (SyntheticEvents, typed ref, React's attributes).
+   * - @types/react 18 builds React.JSX.IntrinsicElements on top of the global JSX namespace, so
+   *   its entries must stay assignable to the framework-agnostic global ones: those are kept.
+   *   (React 18 types declare the HTML elements in the global namespace, React 19 types don't.)
+   * - preact/compat aliased as 'react': its JSX is Preact's, and Preact passes native DOM events,
+   *   so the framework-agnostic props - the same ones the 'preact' augmentation declares.
+   *   (Preact's JSX accepts `class`, React's doesn't.)
    */
-  type ComboboxIntrinsicElement<Global, Typed> = globalThis.JSX.IntrinsicElements extends { div: unknown } ? Global : Typed;
+  type ComboboxIntrinsicElement<Global, Typed> =
+    globalThis.JSX.IntrinsicElements extends { div: unknown } ? Global
+    : 'class' extends keyof import('react').JSX.IntrinsicElements['div'] ? Global
+    : Typed;
 
   namespace JSX {
     interface IntrinsicElements {
-      'combo-box': ComboboxIntrinsicElement<ComboboxElementAttributes, import('react').ClassAttributes<HTMLComboboxElement> & ComboboxHTMLAttributes<HTMLComboboxElement>>;
-      'box-option': ComboboxIntrinsicElement<ComboboxOptionElementAttributes, import('react').ClassAttributes<HTMLComboboxOptionElement> & ComboboxOptionHTMLAttributes<HTMLComboboxOptionElement>>;
-      'box-tag': ComboboxIntrinsicElement<ComboboxTagElementAttributes, import('react').ClassAttributes<HTMLComboboxTagElement> & ComboboxTagHTMLAttributes<HTMLComboboxTagElement>>;
+      'combo-box': ComboboxIntrinsicElement<ComboboxElementAttributes, ComboboxClassAttributes<HTMLComboboxElement> & ComboboxHTMLAttributes<HTMLComboboxElement>>;
+      'box-option': ComboboxIntrinsicElement<ComboboxOptionElementAttributes, ComboboxClassAttributes<HTMLComboboxOptionElement> & ComboboxOptionHTMLAttributes<HTMLComboboxOptionElement>>;
+      'box-tag': ComboboxIntrinsicElement<ComboboxTagElementAttributes, ComboboxClassAttributes<HTMLComboboxTagElement> & ComboboxTagHTMLAttributes<HTMLComboboxTagElement>>;
     }
   }
 }
