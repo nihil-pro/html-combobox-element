@@ -316,6 +316,24 @@ declare global {
 // handlers it knows (onChange, onInput, onFocus, onClick, ...), not DOM events. Events React
 // doesn't know ("close", "search") are attached by React 19 as native listeners under the exact,
 // case-sensitive prop name, so only the lowercase `onclose`/`onsearch` are declared.
+// #region react-type-fallbacks
+/*
+ * Module-private stand-ins for the React types the augmentation below uses. Inside
+ * `declare module 'react'` React's own HTMLAttributes/Key/Ref take precedence; these only resolve
+ * when React's types aren't in the program (React not installed, or - on TypeScript 7 - not
+ * imported by any checked file). Then the augmentation is inert, and without them a project with
+ * `skipLibCheck: false` would get "Cannot find name"/"Cannot find module 'react'" errors from it.
+ * (`import('react').X` can't be used for the same reason.)
+ * The declaration emitter drops them as unused (React is installed here), so
+ * scripts/fix-dual-package.mjs copies this region into the emitted index.d.ts files.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type HTMLAttributes<T> = object;
+type Key = string | number | bigint;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type Ref<T> = unknown;
+// #endregion react-type-fallbacks
+
 declare module 'react' {
   // Only names that both @types/react and preact/compat export are used here (HTMLAttributes, Key,
   // Ref): with `paths: { "react": ["preact/compat"] }` this augmentation lands on preact/compat,
@@ -348,15 +366,13 @@ declare module 'react' {
 
   /** React's ClassAttributes: `key` and a typed `ref`. */
   interface ComboboxClassAttributes<T> {
-    key?: import('react').Key | null | undefined;
-    ref?: import('react').Ref<T> | undefined;
+    key?: Key | null | undefined;
+    ref?: Ref<T> | undefined;
   }
 
-  // (Qualified as import('react') so the names resolve even when React's types enter the program
-  // only through this augmentation - TypeScript 7 doesn't put them in scope otherwise.)
   // Type aliases rather than `interface extends`: React's attributes are replaced, not checked
   // for compatibility, which also keeps these valid against preact/compat's HTMLAttributes.
-  type ComboboxBaseHTMLAttributes<T extends EventTarget, Own> = Omit<import('react').HTMLAttributes<T>, keyof Own | 'class'> & Own & {
+  type ComboboxBaseHTMLAttributes<T extends EventTarget, Own> = Omit<HTMLAttributes<T>, keyof Own | 'class'> & Own & {
     class?: string | undefined;
   };
 
@@ -389,7 +405,7 @@ declare module 'react' {
    */
   type ComboboxIntrinsicElement<Global, Typed> =
     globalThis.JSX.IntrinsicElements extends { div: unknown } ? Global
-    : 'class' extends keyof import('react').JSX.IntrinsicElements['div'] ? Global
+    : JSX.IntrinsicElements extends { div: infer Div } ? ('class' extends keyof Div ? Global : Typed)
     : Typed;
 
   namespace JSX {
