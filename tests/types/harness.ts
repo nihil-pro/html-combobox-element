@@ -54,6 +54,7 @@ export const LAYOUTS: Layout[] = [
   { name: 'consumer-preact', install: 'npm', shared: [{ from: 'shared', to: '.' }] },
   // react aliased to preact/compat, react + preact + @types/react all installed
   { name: 'consumer-preact-compat', install: 'npm', shared: [{ from: 'shared', to: '.' }] },
+  { name: 'consumer-solidjs', install: 'npm', shared: [{ from: 'shared', to: '.' }] },
   { name: 'monorepo-npm', install: 'npm', shared: [{ from: 'monorepo', to: '.' }] },
   { name: 'monorepo-pnpm', install: 'pnpm', shared: [{ from: 'monorepo', to: '.' }] },
   { name: 'monorepo-pnpm-strict', install: 'pnpm', shared: [{ from: 'monorepo', to: '.' }] },

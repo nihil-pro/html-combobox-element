@@ -178,41 +178,7 @@ import type {} from 'html-combobox-element';
 ### Other frameworks
 JSX/template type-checking for these needs one small file in your project, with the snippet for your framework:
 
-<details>
-<summary><strong>Preact</strong> (<code>jsx: "react-jsx"</code>, <code>jsxImportSource: "preact"</code>)</summary>
 
-```ts
-// combo-box.d.ts
-declare module 'preact/jsx-runtime' {
-  namespace JSX {
-    interface IntrinsicElements {
-      'combo-box': ComboboxElementAttributes;
-      'box-option': ComboboxOptionElementAttributes;
-      'box-tag': ComboboxTagElementAttributes;
-    }
-  }
-}
-```
-
-</details>
-
-<details>
-<summary><strong>Solid</strong> (<code>jsx: "preserve"</code>, <code>jsxImportSource: "solid-js"</code>)</summary>
-
-```ts
-// combo-box.d.ts
-declare module 'solid-js/jsx-runtime' {
-  namespace JSX {
-    interface IntrinsicElements {
-      'combo-box': ComboboxElementAttributes;
-      'box-option': ComboboxOptionElementAttributes;
-      'box-tag': ComboboxTagElementAttributes;
-    }
-  }
-}
-```
-
-</details>
 
 <details>
 <summary><strong>Vue</strong> (SFC <code>&lt;template&gt;</code>, checked via <code>vue-tsc</code>)</summary>
