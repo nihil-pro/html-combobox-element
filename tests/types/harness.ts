@@ -55,6 +55,7 @@ export const LAYOUTS: Layout[] = [
   // react aliased to preact/compat, react + preact + @types/react all installed
   { name: 'consumer-preact-compat', install: 'npm', shared: [{ from: 'shared', to: '.' }] },
   { name: 'consumer-solidjs', install: 'npm', shared: [{ from: 'shared', to: '.' }] },
+  { name: 'consumer-vue', install: 'npm', shared: [{ from: 'shared', to: '.' }] },
   { name: 'monorepo-npm', install: 'npm', shared: [{ from: 'monorepo', to: '.' }] },
   { name: 'monorepo-pnpm', install: 'pnpm', shared: [{ from: 'monorepo', to: '.' }] },
   { name: 'monorepo-pnpm-strict', install: 'pnpm', shared: [{ from: 'monorepo', to: '.' }] },
@@ -81,11 +82,12 @@ export interface TscResult {
 const DIAGNOSTIC = /^(.+?)\((\d+),\d+\): error TS(\d+): (.*)$/;
 const GLOBAL_DIAGNOSTIC = /^error TS(\d+): (.*)$/;
 
-export function tsc(cwd: string, args: string[], ts: TsVersion | 'workspace' = 'ts5.9'): TscResult {
+export function tsc(cwd: string, args: string[], ts: TsVersion | 'workspace' = 'ts5.9', vue = false): TscResult {
+  const tsc = vue ? "vue-tsc" : "tsc"
   const bin =
     ts === 'workspace'
-      ? path.join(cwd, 'node_modules', 'typescript', 'bin', 'tsc')
-      : path.join(cwd, 'node_modules', TS_VERSIONS[ts], 'bin', 'tsc');
+      ? path.join(cwd, 'node_modules', 'typescript', 'bin', tsc)
+      : path.join(cwd, 'node_modules', TS_VERSIONS[ts], 'bin', tsc);
   // `-b` must come first on the command line
   const argv = args[0] === '-b' ? [args[0], args[1], '--pretty', 'false', ...args.slice(2)] : ['--pretty', 'false', ...args];
   const res = spawnSync(process.execPath, [bin, ...argv], { cwd, encoding: 'utf8' });

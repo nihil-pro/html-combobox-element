@@ -1,4 +1,5 @@
-// Type-only, side-effect-free imports. These exist purely so TypeScript accepts the
+// Type-only, side-effect-free imports.
+// These exist purely so TypeScript accepts the
 // `declare module '...'` augmentations below while *building this package* (an ambient
 // module augmentation must resolve to a real module in the current compilation). They
 // carry no exported bindings, so they're always elided from the emitted JS and, since
