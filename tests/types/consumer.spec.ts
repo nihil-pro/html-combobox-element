@@ -58,7 +58,7 @@ function check(layout: string, ts: TsVersion, name: string, config: object, args
   return tsc(dir, ['-p', project, ...args], ts);
 }
 
-const sources = (root: string) => [`${root}/src/dom.ts`, `${root}/src/react.tsx`, `${root}/src/playwright-subpath.ts`];
+const sources = (root: string) => [`${root}/src/dom.ts`, `${root}/src/globals.ts`, `${root}/src/react.tsx`, `${root}/src/playwright-subpath.ts`];
 
 // ---------------------------------------------------------------------------------------------
 
@@ -129,7 +129,7 @@ test.describe('no framework installed (DOM only, skipLibCheck: false)', () => {
       test(`${ts} · ${res.name}`, () => {
         const r = check('consumer-vanilla', ts, `vanilla.${res.name}`, {
           compilerOptions: compilerOptions(ts, res, 'preserve'),
-          files: ['src/dom.ts', 'src/regressions/add-event-listener-event-map.ts', 'src/regressions/exported-class-is-tag-type.ts', 'src/playwright-subpath.ts'],
+          files: ['src/dom.ts', 'src/globals.ts', 'src/regressions/add-event-listener-event-map.ts', 'src/regressions/exported-class-is-tag-type.ts', 'src/playwright-subpath.ts'],
         });
         expect(r.diagnostics, format(r)).toEqual([]);
       });

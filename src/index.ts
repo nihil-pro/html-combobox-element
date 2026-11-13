@@ -30,127 +30,138 @@ export const HTMLComboboxElement: Omit<typeof ComboboxElementClass, 'prototype'>
   new (): HTMLComboboxElement;
 } = ComboboxElementClass as any;
 
-interface HTMLComboboxTagElement extends HTMLElement {}
+/**
+ * The same type as the global `HTMLComboboxElement` (available without importing, like
+ * `HTMLSelectElement`): what `createElement('combo-box')`, `querySelector`, `event.target`
+ * and refs give.
+ */
+export type HTMLComboboxElement = globalThis.HTMLComboboxElement;
 
-interface HTMLComboboxOptionElement extends HTMLOptionElement {
-  value: string
-  label: string
-}
+// Global like lib.dom's element types (only the types: the constructors are not window globals -
+// import `HTMLComboboxElement` for the class).
+declare global {
+  interface HTMLComboboxTagElement extends HTMLElement {}
 
-export interface HTMLComboboxElement extends HTMLSelectElement {
-  /** List of selected options value attribute */
-  valueAsArray: string[];
+  interface HTMLComboboxOptionElement extends HTMLOptionElement {
+    value: string
+    label: string
+  }
 
-  /** Whether the value differs from when the picker opened (read it in a `close` listener). */
-  readonly changed: boolean;
+  interface HTMLComboboxElement extends HTMLSelectElement {
+    /** List of selected options value attribute */
+    valueAsArray: string[];
 
-  /** A live `HTMLOptionsCollection`-compatible collection (not `instanceof HTMLOptionsCollection`). */
-  readonly options: HTMLOptionsCollection & HTMLComboboxOptionsCollection;
+    /** Whether the value differs from when the picker opened (read it in a `close` listener). */
+    readonly changed: boolean;
 
-  multiple: boolean;
+    /** A live `HTMLOptionsCollection`-compatible collection (not `instanceof HTMLOptionsCollection`). */
+    readonly options: HTMLOptionsCollection & HTMLComboboxOptionsCollection;
 
-  /** The value of internal input
-   *
-   * Internal input is visible when either "searchable" or "filterable" attribute is presented */
-  query: string;
+    multiple: boolean;
 
-  /** The placeholder of internal input
-   *
-   * Internal input is visible when either "searchable" or "filterable" attribute is presented
-   *
-   * When <combo-box> is empty, this value is also shown as <combo-box> placeholder itself
-   * */
-  placeholder: string;
+    /** The value of internal input
+     *
+     * Internal input is visible when either "searchable" or "filterable" attribute is presented */
+    query: string;
 
-  /** When is true, the clear-all-button is shown in the <combo-box> itself,
-   * and the clear-button is shown for each selected tag.
-   *
-   * If multiple attribute is set to "true", this is also enabled.
-   *
-   * If multiple attribute is set to "false", i.e. the <combo-box> is used as a <select>,
-   * then setting this attribute to "true" will make the clear-button of selected tag visible
-   * */
-  clearable: boolean;
+    /** The placeholder of internal input
+     *
+     * Internal input is visible when either "searchable" or "filterable" attribute is presented
+     *
+     * When <combo-box> is empty, this value is also shown as <combo-box> placeholder itself
+     * */
+    placeholder: string;
 
-  /** When is true, the internal input is shown.
-   *
-   * When user type something, available options are not filtered by this query.
-   * You have to set an "input" listener to the <combo-box> and filter options by yourself
-   *
-   * Setting both "searchable" and "filterable" make no sense, the "searchable" will have priority
-   * */
-  searchable: boolean;
+    /** When is true, the clear-all-button is shown in the <combo-box> itself,
+     * and the clear-button is shown for each selected tag.
+     *
+     * If multiple attribute is set to "true", this is also enabled.
+     *
+     * If multiple attribute is set to "false", i.e. the <combo-box> is used as a <select>,
+     * then setting this attribute to "true" will make the clear-button of selected tag visible
+     * */
+    clearable: boolean;
 
-  /** When is true, the internal input is shown.
-   *
-   * When user type something, available options are filtered by this query.
-   *
-   * Setting both "filterable" and "searchable" make no sense, the "searchable" will have priority
-   * */
-  filterable: boolean;
+    /** When is true, the internal input is shown.
+     *
+     * When user type something, available options are not filtered by this query.
+     * You have to set an "input" listener to the <combo-box> and filter options by yourself
+     *
+     * Setting both "searchable" and "filterable" make no sense, the "searchable" will have priority
+     * */
+    searchable: boolean;
 
-  selectedOptions: HTMLCollectionOf<HTMLComboboxOptionElement>;
+    /** When is true, the internal input is shown.
+     *
+     * When user type something, available options are filtered by this query.
+     *
+     * Setting both "filterable" and "searchable" make no sense, the "searchable" will have priority
+     * */
+    filterable: boolean;
+
+    selectedOptions: HTMLCollectionOf<HTMLComboboxOptionElement>;
 
 
-  // The combobox's own event map first: it extends HTMLElementEventMap and overrides some of
-  // its keys ('change', 'input', 'focus', ...). Declared after the HTMLElementEventMap overload,
-  // it was unreachable - overload resolution always stopped at the first one.
-  addEventListener<K extends keyof ComboboxEventMap>(
-    type: K,
-    listener: (this: HTMLComboboxElement, ev: ComboboxEventMap[K]) => any,
-    options?: boolean | AddEventListenerOptions
-  ): void;
+    // The combobox's own event map first: it extends HTMLElementEventMap and overrides some of
+    // its keys ('change', 'input', 'focus', ...). Declared after the HTMLElementEventMap overload,
+    // it was unreachable - overload resolution always stopped at the first one.
+    addEventListener<K extends keyof ComboboxEventMap>(
+      type: K,
+      listener: (this: HTMLComboboxElement, ev: ComboboxEventMap[K]) => any,
+      options?: boolean | AddEventListenerOptions
+    ): void;
 
-  addEventListener<K extends keyof HTMLElementEventMap>(
-    type: K,
-    listener: (this: HTMLComboboxElement, ev: HTMLElementEventMap[K]) => any,
-    options?: boolean | AddEventListenerOptions
-  ): void;
+    addEventListener<K extends keyof HTMLElementEventMap>(
+      type: K,
+      listener: (this: HTMLComboboxElement, ev: HTMLElementEventMap[K]) => any,
+      options?: boolean | AddEventListenerOptions
+    ): void;
 
-  // Fallback
-  addEventListener(
-    type: string,
-    listener: EventListenerOrEventListenerObject,
-    options?: boolean | AddEventListenerOptions
-  ): void;
+    // Fallback
+    addEventListener(
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | AddEventListenerOptions
+    ): void;
 
-  // Similar for removeEventListener
-  removeEventListener<K extends keyof ComboboxEventMap>(
-    type: K,
-    listener: (this: HTMLComboboxElement, ev: ComboboxEventMap[K]) => any,
-    options?: boolean | EventListenerOptions
-  ): void;
+    // Similar for removeEventListener
+    removeEventListener<K extends keyof ComboboxEventMap>(
+      type: K,
+      listener: (this: HTMLComboboxElement, ev: ComboboxEventMap[K]) => any,
+      options?: boolean | EventListenerOptions
+    ): void;
 
-  removeEventListener<K extends keyof HTMLElementEventMap>(
-    type: K,
-    listener: (this: HTMLComboboxElement, ev: HTMLElementEventMap[K]) => any,
-    options?: boolean | EventListenerOptions
-  ): void;
+    removeEventListener<K extends keyof HTMLElementEventMap>(
+      type: K,
+      listener: (this: HTMLComboboxElement, ev: HTMLElementEventMap[K]) => any,
+      options?: boolean | EventListenerOptions
+    ): void;
 
-  removeEventListener(
-    type: string,
-    listener: EventListenerOrEventListenerObject,
-    options?: boolean | EventListenerOptions
-  ): void;
-}
+    removeEventListener(
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | EventListenerOptions
+    ): void;
+  }
 
-interface ComboboxEventMap extends HTMLElementEventMap {
-  "change": ComboboxEvent;
-  "blur": ComboboxFocusEvent;
-  "focus": ComboboxFocusEvent;
-  "focusin": ComboboxFocusEvent;
-  "focusout": ComboboxFocusEvent;
-  "input": ComboboxInputEvent;
-  "invalid": ComboboxEvent;
-  // "select": ComboboxEvent;
-  "selectionchange": ComboboxEvent;
-  "selectstart": ComboboxEvent;
-  /** The picker closed (read `event.target.changed`) */
-  "close": ComboboxEvent;
-  /** Enter was pressed in the search field */
-  "search": ComboboxEvent;
-  /** The owner form was reset */
-  "reset": ComboboxEvent;
+  interface ComboboxEventMap extends HTMLElementEventMap {
+    "change": ComboboxEvent;
+    "blur": ComboboxFocusEvent;
+    "focus": ComboboxFocusEvent;
+    "focusin": ComboboxFocusEvent;
+    "focusout": ComboboxFocusEvent;
+    "input": ComboboxInputEvent;
+    "invalid": ComboboxEvent;
+    // "select": ComboboxEvent;
+    "selectionchange": ComboboxEvent;
+    "selectstart": ComboboxEvent;
+    /** The picker closed (read `event.target.changed`) */
+    "close": ComboboxEvent;
+    /** Enter was pressed in the search field */
+    "search": ComboboxEvent;
+    /** The owner form was reset */
+    "reset": ComboboxEvent;
+  }
 }
 
 /** Own attributes/properties of `<combo-box>`, shared by every JSX integration below. */
@@ -216,9 +227,14 @@ export interface ComboboxJsxAttributes {
 }
 
 export interface ComboboxOptionJsxAttributes {
+  /** The value submitted and reported (`combobox.value`, `valueAsArray`) when this option is selected. */
   value: string;
+  /** The option's label; defaults to its text content. */
   label?: string;
+  /** Initially selected. `false`, `undefined` or removing the prop deselects it. */
   selected?: boolean;
+  /** Can't be selected by the user. `false`, `undefined` or removing the prop enables it. */
+  disabled?: boolean;
 }
 
 /**

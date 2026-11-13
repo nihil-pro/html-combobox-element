@@ -11,6 +11,8 @@ export function Basic() {
   const ref = useRef<HTMLElementTagNameMap['combo-box']>(null);
   return (
     <combo-box ref={ref} class="picker" name="fruit" multiple placeholder="Fruit" value="apple">
+      <box-option value="cherry" disabled>Cherry</box-option>
+      <box-option value="date" disabled={false} selected>Date</box-option>
       <box-option value="apple">Apple</box-option>
       <box-tag />
     </combo-box>

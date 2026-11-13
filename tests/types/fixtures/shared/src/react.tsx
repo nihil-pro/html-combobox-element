@@ -47,6 +47,8 @@ export function Basic() {
             </box-option>
           ))}
         </optgroup>
+        <box-option value="cherry" disabled>Cherry</box-option>
+        <box-option value="date" disabled={false} selected={false}>Date</box-option>
         <box-tag slot="tag" />
       </combo-box>
     </form>
@@ -123,4 +125,32 @@ export function ReadmeExample({ setFruits, save }: { setFruits: (fruits: string[
       <box-option value="apple">Apple</box-option>
     </combo-box>
   );
+}
+
+// --- The README's listener hook (needed on React 18, where onChange/onclose never fire) ---------
+// Uses the global ComboboxEventMap and element types, without importing them.
+export function useComboboxEvent<K extends keyof ComboboxEventMap>(
+  ref: React.RefObject<HTMLElementTagNameMap['combo-box'] | null>,
+  type: K,
+  handler: (event: ComboboxEventMap[K]) => void,
+) {
+  const latest = React.useRef(handler);
+  latest.current = handler;
+  React.useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const listener = (event: ComboboxEventMap[K]) => latest.current(event);
+    element.addEventListener(type, listener);
+    return () => element.removeEventListener(type, listener);
+  }, [ref, type]);
+}
+
+export function ReadmeHookExample({ setFruits }: { setFruits: (fruits: string[]) => void }) {
+  const ref = React.useRef<HTMLComboboxElement>(null);
+  useComboboxEvent(ref, 'change', (event) => setFruits(event.target.valueAsArray));
+  useComboboxEvent(ref, 'close', (event) => {
+    const changed: boolean = event.target.changed;
+    return changed;
+  });
+  return <combo-box ref={ref} multiple />;
 }

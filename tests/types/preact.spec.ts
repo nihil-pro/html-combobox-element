@@ -25,7 +25,7 @@ for (const ts of ['ts5.9', 'ts6.0', 'ts7.0'] as TsVersion[]) {
           skipLibCheck: false,
           types: [],
         },
-        files: ['src/dom.ts', 'src/preact.tsx'],
+        files: ['src/dom.ts', 'src/globals.ts', 'src/preact.tsx'],
       });
       const r = tsc(dir, ['-p', project], ts);
       expect(r.diagnostics, format(r)).toEqual([]);

@@ -23,6 +23,8 @@ export function App() {
         setFruits(event.target.valueAsArray);
       }}
     >
+      <box-option value="cherry" disabled>Cherry</box-option>
+      <box-option value="date" disabled={false} selected>Date</box-option>
       <box-option value="apple">Apple {fruits.length}</box-option>
     </combo-box>
   );
