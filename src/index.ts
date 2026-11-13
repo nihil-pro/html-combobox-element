@@ -231,22 +231,60 @@ export interface ComboboxOptionJsxAttributes {
  */
 export interface ComboboxCommonAttributes {
   id?: string;
+  /** CSS classes (Preact, Vue, Solid, React 19). */
   class?: string;
+  /** CSS classes (React). */
   className?: string;
+  /** Inline styles, in the framework's own format (a string or an object). */
   style?: unknown;
   slot?: string;
   title?: string;
   tabIndex?: number;
   hidden?: boolean;
   children?: unknown;
+  /** The element: `HTMLElementTagNameMap['combo-box']` (a ref object or callback, per framework). */
   ref?: unknown;
   key?: string | number;
 
+  // Handlers. What a framework passes depends on the runtime, which the types can't see (e.g.
+  // @types/react with Preact aliased in by the bundler). Verified in tests/frameworks.spec.ts.
+
+  /**
+   * The user changed the selection; `event.target.value` / `.valueAsArray` is the new value.
+   * - Preact, Vue: called with the DOM event.
+   * - React 19: called with a SyntheticEvent (`event.nativeEvent` is the DOM event).
+   * - React 18: **never called** - listen with `ref` + `addEventListener('change', ...)`.
+   */
   onChange?: (event: ComboboxEvent) => void;
+  /**
+   * The user typed in the search field; `event.target.query` is the text.
+   * Preact, Vue: the DOM InputEvent. React 18 and 19: a SyntheticEvent.
+   */
   onInput?: (event: ComboboxInputEvent) => void;
+  /** Focus moved into the combobox. Preact, Vue: the DOM event. React: a SyntheticEvent. */
   onFocus?: (event: ComboboxFocusEvent) => void;
+  /** Focus left the combobox. Preact, Vue: the DOM event. React: a SyntheticEvent. */
   onBlur?: (event: ComboboxFocusEvent) => void;
+  /** The value failed validation (e.g. `required` and empty) on form submit / `checkValidity()`. */
   onInvalid?: (event: ComboboxEvent) => void;
+  /**
+   * The picker closed; `event.target.changed` tells whether the value changed meanwhile.
+   * - Preact, Vue: called, in either casing (`onClose` or `onclose`), with the DOM event.
+   * - React 19: only as `onclose` (lowercase).
+   * - React 18: **never called** - use `ref` + `addEventListener('close', ...)`.
+   */
+  onClose?: (event: ComboboxEvent) => void;
+  /** Same event as `onClose`. React 19 needs this lowercase spelling; React 18 never calls it. */
+  onclose?: (event: ComboboxEvent) => void;
+  /**
+   * Enter was pressed in the search field; `event.target.query` is the text.
+   * - Preact, Vue: called, in either casing, with the DOM event.
+   * - React 19: only as `onsearch` (lowercase).
+   * - React 18: **never called** - use `ref` + `addEventListener('search', ...)`.
+   */
+  onSearch?: (event: ComboboxEvent) => void;
+  /** Same event as `onSearch`. React 19 needs this lowercase spelling; React 18 never calls it. */
+  onsearch?: (event: ComboboxEvent) => void;
 
   [key: `data-${string}`]: unknown;
   [key: `aria-${string}`]: unknown;

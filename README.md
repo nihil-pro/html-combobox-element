@@ -165,7 +165,41 @@ React wraps events in its own SyntheticEvents, so handlers are typed accordingly
 </combo-box>
 ```
 
-With `@types/react` 18 the framework-agnostic typings are used, as in previous versions.
+With `@types/react` 18 the framework-agnostic typings are used, as in previous versions: types can't tell React 18 from Preact aliased in as `react` by the bundler, and the two behave differently.
+
+### What each runtime does
+The props are the same everywhere, but which handlers get called, and with what, depends on the framework (verified in `tests/frameworks.spec.ts`):
+
+| Handler prop | React 19 | React 18 | Preact (also as `preact/compat`) | Vue |
+|---|---|---|---|---|
+| `onChange` | SyntheticEvent | **never called** | DOM event | DOM event |
+| `onInput` | SyntheticEvent | SyntheticEvent | DOM event | DOM event |
+| `onClose` / `onSearch` | never called | never called | DOM event | DOM event |
+| `onclose` / `onsearch` | DOM event | never called | DOM event | DOM event |
+
+With React 18, listen to `change`, `close` and `search` on the element itself:
+```tsx
+function useComboboxEvent<K extends keyof ComboboxEventMap>(
+  ref: React.RefObject<HTMLElementTagNameMap['combo-box'] | null>,
+  type: K,
+  handler: (event: ComboboxEventMap[K]) => void,
+) {
+  const latest = React.useRef(handler);
+  latest.current = handler;
+  React.useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const listener = (event: ComboboxEventMap[K]) => latest.current(event);
+    element.addEventListener(type, listener);
+    return () => element.removeEventListener(type, listener);
+  }, [ref, type]);
+}
+
+const ref = React.useRef<HTMLElementTagNameMap['combo-box']>(null);
+useComboboxEvent(ref, 'change', (event) => setFruits(event.target.valueAsArray));
+```
+
+Boolean props (`multiple`, `clearable`, `disabled`, ...) behave like native ones in every framework: `false`, `undefined` or removing the prop turns the feature off. As properties they follow native rules (`element.multiple = ''` is `false`, like `select.multiple`), except that the string `'false'` is also `false`; as attributes, present means on (`<combo-box multiple>`), and `multiple="false"` means off.
 
 If you copied the React `combo-box.d.ts` snippet from the README of a previous version, delete it: it still compiles, but it keeps the old typings.
 
