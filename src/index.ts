@@ -17,24 +17,11 @@ import type { HTMLComboboxOptionsCollection } from './combobox/HTML.combobox.opt
 
 export * from './combobox/index.js';
 
-/**
- * The `<combo-box>` constructor, typed the way lib.dom types built-in elements
- * (`interface HTMLSelectElement` + `declare var HTMLSelectElement: { prototype; new() }`):
- * the same `HTMLComboboxElement` type is what `document.createElement('combo-box')`,
- * `querySelector('combo-box')`, `event.target`, refs and `instanceof HTMLComboboxElement` give.
- *
- * Runtime-wise this is the very same class object that `export *` exported before.
- */
 export const HTMLComboboxElement: Omit<typeof ComboboxElementClass, 'prototype'> & {
   prototype: HTMLComboboxElement;
   new (): HTMLComboboxElement;
 } = ComboboxElementClass as any;
 
-/**
- * The same type as the global `HTMLComboboxElement` (available without importing, like
- * `HTMLSelectElement`): what `createElement('combo-box')`, `querySelector`, `event.target`
- * and refs give.
- */
 export type HTMLComboboxElement = globalThis.HTMLComboboxElement;
 
 // Global like lib.dom's element types (only the types: the constructors are not window globals -
