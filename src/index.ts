@@ -1,4 +1,5 @@
-// Type-only, side-effect-free imports. These exist purely so TypeScript accepts the
+// Type-only, side-effect-free imports.
+// These exist purely so TypeScript accepts the
 // `declare module '...'` augmentations below while *building this package* (an ambient
 // module augmentation must resolve to a real module in the current compilation). They
 // carry no exported bindings, so they're always elided from the emitted JS and, since
@@ -16,140 +17,138 @@ import type { HTMLComboboxOptionsCollection } from './combobox/HTML.combobox.opt
 
 export * from './combobox/index.js';
 
-/**
- * The `<combo-box>` constructor, typed the way lib.dom types built-in elements
- * (`interface HTMLSelectElement` + `declare var HTMLSelectElement: { prototype; new() }`):
- * the same `HTMLComboboxElement` type is what `document.createElement('combo-box')`,
- * `querySelector('combo-box')`, `event.target`, refs and `instanceof HTMLComboboxElement` give.
- *
- * Runtime-wise this is the very same class object that `export *` exported before.
- */
 export const HTMLComboboxElement: Omit<typeof ComboboxElementClass, 'prototype'> & {
   prototype: HTMLComboboxElement;
   new (): HTMLComboboxElement;
 } = ComboboxElementClass as any;
 
-interface HTMLComboboxTagElement extends HTMLElement {}
+export type HTMLComboboxElement = globalThis.HTMLComboboxElement;
 
-interface HTMLComboboxOptionElement extends HTMLOptionElement {
-  value: string
-  label: string
-}
+// Global like lib.dom's element types (only the types: the constructors are not window globals -
+// import `HTMLComboboxElement` for the class).
+declare global {
+  interface HTMLComboboxTagElement extends HTMLElement {}
 
-export interface HTMLComboboxElement extends HTMLSelectElement {
-  /** List of selected options value attribute */
-  valueAsArray: string[];
+  interface HTMLComboboxOptionElement extends HTMLOptionElement {
+    value: string
+    label: string
+  }
 
-  /** Whether the value differs from when the picker opened (read it in a `close` listener). */
-  readonly changed: boolean;
+  interface HTMLComboboxElement extends HTMLSelectElement {
+    /** List of selected options value attribute */
+    valueAsArray: string[];
 
-  /** A live `HTMLOptionsCollection`-compatible collection (not `instanceof HTMLOptionsCollection`). */
-  readonly options: HTMLOptionsCollection & HTMLComboboxOptionsCollection;
+    /** Whether the value differs from when the picker opened (read it in a `close` listener). */
+    readonly changed: boolean;
 
-  multiple: boolean;
+    /** A live `HTMLOptionsCollection`-compatible collection (not `instanceof HTMLOptionsCollection`). */
+    readonly options: HTMLOptionsCollection & HTMLComboboxOptionsCollection;
 
-  /** The value of internal input
-   *
-   * Internal input is visible when either "searchable" or "filterable" attribute is presented */
-  query: string;
+    multiple: boolean;
 
-  /** The placeholder of internal input
-   *
-   * Internal input is visible when either "searchable" or "filterable" attribute is presented
-   *
-   * When <combo-box> is empty, this value is also shown as <combo-box> placeholder itself
-   * */
-  placeholder: string;
+    /** The value of internal input
+     *
+     * Internal input is visible when either "searchable" or "filterable" attribute is presented */
+    query: string;
 
-  /** When is true, the clear-all-button is shown in the <combo-box> itself,
-   * and the clear-button is shown for each selected tag.
-   *
-   * If multiple attribute is set to "true", this is also enabled.
-   *
-   * If multiple attribute is set to "false", i.e. the <combo-box> is used as a <select>,
-   * then setting this attribute to "true" will make the clear-button of selected tag visible
-   * */
-  clearable: boolean;
+    /** The placeholder of internal input
+     *
+     * Internal input is visible when either "searchable" or "filterable" attribute is presented
+     *
+     * When <combo-box> is empty, this value is also shown as <combo-box> placeholder itself
+     * */
+    placeholder: string;
 
-  /** When is true, the internal input is shown.
-   *
-   * When user type something, available options are not filtered by this query.
-   * You have to set an "input" listener to the <combo-box> and filter options by yourself
-   *
-   * Setting both "searchable" and "filterable" make no sense, the "searchable" will have priority
-   * */
-  searchable: boolean;
+    /** When is true, the clear-all-button is shown in the <combo-box> itself,
+     * and the clear-button is shown for each selected tag.
+     *
+     * If multiple attribute is set to "true", this is also enabled.
+     *
+     * If multiple attribute is set to "false", i.e. the <combo-box> is used as a <select>,
+     * then setting this attribute to "true" will make the clear-button of selected tag visible
+     * */
+    clearable: boolean;
 
-  /** When is true, the internal input is shown.
-   *
-   * When user type something, available options are filtered by this query.
-   *
-   * Setting both "filterable" and "searchable" make no sense, the "searchable" will have priority
-   * */
-  filterable: boolean;
+    /** When is true, the internal input is shown.
+     *
+     * When user type something, available options are not filtered by this query.
+     * You have to set an "input" listener to the <combo-box> and filter options by yourself
+     *
+     * Setting both "searchable" and "filterable" make no sense, the "searchable" will have priority
+     * */
+    searchable: boolean;
 
-  selectedOptions: HTMLCollectionOf<HTMLComboboxOptionElement>;
+    /** When is true, the internal input is shown.
+     *
+     * When user type something, available options are filtered by this query.
+     *
+     * Setting both "filterable" and "searchable" make no sense, the "searchable" will have priority
+     * */
+    filterable: boolean;
+
+    selectedOptions: HTMLCollectionOf<HTMLComboboxOptionElement>;
 
 
-  // The combobox's own event map first: it extends HTMLElementEventMap and overrides some of
-  // its keys ('change', 'input', 'focus', ...). Declared after the HTMLElementEventMap overload,
-  // it was unreachable - overload resolution always stopped at the first one.
-  addEventListener<K extends keyof ComboboxEventMap>(
-    type: K,
-    listener: (this: HTMLComboboxElement, ev: ComboboxEventMap[K]) => any,
-    options?: boolean | AddEventListenerOptions
-  ): void;
+    // The combobox's own event map first: it extends HTMLElementEventMap and overrides some of
+    // its keys ('change', 'input', 'focus', ...). Declared after the HTMLElementEventMap overload,
+    // it was unreachable - overload resolution always stopped at the first one.
+    addEventListener<K extends keyof ComboboxEventMap>(
+      type: K,
+      listener: (this: HTMLComboboxElement, ev: ComboboxEventMap[K]) => any,
+      options?: boolean | AddEventListenerOptions
+    ): void;
 
-  addEventListener<K extends keyof HTMLElementEventMap>(
-    type: K,
-    listener: (this: HTMLComboboxElement, ev: HTMLElementEventMap[K]) => any,
-    options?: boolean | AddEventListenerOptions
-  ): void;
+    addEventListener<K extends keyof HTMLElementEventMap>(
+      type: K,
+      listener: (this: HTMLComboboxElement, ev: HTMLElementEventMap[K]) => any,
+      options?: boolean | AddEventListenerOptions
+    ): void;
 
-  // Fallback
-  addEventListener(
-    type: string,
-    listener: EventListenerOrEventListenerObject,
-    options?: boolean | AddEventListenerOptions
-  ): void;
+    // Fallback
+    addEventListener(
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | AddEventListenerOptions
+    ): void;
 
-  // Similar for removeEventListener
-  removeEventListener<K extends keyof ComboboxEventMap>(
-    type: K,
-    listener: (this: HTMLComboboxElement, ev: ComboboxEventMap[K]) => any,
-    options?: boolean | EventListenerOptions
-  ): void;
+    // Similar for removeEventListener
+    removeEventListener<K extends keyof ComboboxEventMap>(
+      type: K,
+      listener: (this: HTMLComboboxElement, ev: ComboboxEventMap[K]) => any,
+      options?: boolean | EventListenerOptions
+    ): void;
 
-  removeEventListener<K extends keyof HTMLElementEventMap>(
-    type: K,
-    listener: (this: HTMLComboboxElement, ev: HTMLElementEventMap[K]) => any,
-    options?: boolean | EventListenerOptions
-  ): void;
+    removeEventListener<K extends keyof HTMLElementEventMap>(
+      type: K,
+      listener: (this: HTMLComboboxElement, ev: HTMLElementEventMap[K]) => any,
+      options?: boolean | EventListenerOptions
+    ): void;
 
-  removeEventListener(
-    type: string,
-    listener: EventListenerOrEventListenerObject,
-    options?: boolean | EventListenerOptions
-  ): void;
-}
+    removeEventListener(
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | EventListenerOptions
+    ): void;
+  }
 
-interface ComboboxEventMap extends HTMLElementEventMap {
-  "change": ComboboxEvent;
-  "blur": ComboboxFocusEvent;
-  "focus": ComboboxFocusEvent;
-  "focusin": ComboboxFocusEvent;
-  "focusout": ComboboxFocusEvent;
-  "input": ComboboxInputEvent;
-  "invalid": ComboboxEvent;
-  // "select": ComboboxEvent;
-  "selectionchange": ComboboxEvent;
-  "selectstart": ComboboxEvent;
-  /** The picker closed (read `event.target.changed`) */
-  "close": ComboboxEvent;
-  /** Enter was pressed in the search field */
-  "search": ComboboxEvent;
-  /** The owner form was reset */
-  "reset": ComboboxEvent;
+  interface ComboboxEventMap extends HTMLElementEventMap {
+    "change": ComboboxEvent;
+    "blur": ComboboxFocusEvent;
+    "focus": ComboboxFocusEvent;
+    "focusin": ComboboxFocusEvent;
+    "focusout": ComboboxFocusEvent;
+    "input": ComboboxInputEvent;
+    "invalid": ComboboxEvent;
+    // "select": ComboboxEvent;
+    "selectionchange": ComboboxEvent;
+    "selectstart": ComboboxEvent;
+    /** The picker closed (read `event.target.changed`) */
+    "close": ComboboxEvent;
+    /** Enter was pressed in the search field */
+    "search": ComboboxEvent;
+    /** The owner form was reset */
+    "reset": ComboboxEvent;
+  }
 }
 
 /** Own attributes/properties of `<combo-box>`, shared by every JSX integration below. */
@@ -215,9 +214,14 @@ export interface ComboboxJsxAttributes {
 }
 
 export interface ComboboxOptionJsxAttributes {
+  /** The value submitted and reported (`combobox.value`, `valueAsArray`) when this option is selected. */
   value: string;
+  /** The option's label; defaults to its text content. */
   label?: string;
+  /** Initially selected. `false`, `undefined` or removing the prop deselects it. */
   selected?: boolean;
+  /** Can't be selected by the user. `false`, `undefined` or removing the prop enables it. */
+  disabled?: boolean;
 }
 
 /**
@@ -230,22 +234,76 @@ export interface ComboboxOptionJsxAttributes {
  */
 export interface ComboboxCommonAttributes {
   id?: string;
+  /** CSS classes (Preact, Vue, Solid, React 19). */
   class?: string;
+  /** CSS classes (React). */
   className?: string;
+  /** Inline styles, in the framework's own format (a string or an object). */
   style?: unknown;
   slot?: string;
   title?: string;
   tabIndex?: number;
   hidden?: boolean;
   children?: unknown;
+  /** The element: `HTMLElementTagNameMap['combo-box']` (a ref object or callback, per framework). */
   ref?: unknown;
   key?: string | number;
 
+  // Handlers. What a framework passes depends on the runtime, which the types can't see (e.g.
+  // @types/react with Preact aliased in by the bundler). Verified in tests/frameworks.spec.ts.
+
+  /**
+   * The user changed the selection; `event.target.value` / `.valueAsArray` is the new value.
+   * - Preact, Solid, Vue: called with the DOM event.
+   * - React 19: called with a SyntheticEvent (`event.nativeEvent` is the DOM event).
+   * - React 18: **never called** - listen with `ref` + `addEventListener('change', ...)`.
+   */
   onChange?: (event: ComboboxEvent) => void;
+  /**
+   * The user typed in the search field; `event.target.query` is the text.
+   * Preact, Solid, Vue: the DOM InputEvent. React 18 and 19: a SyntheticEvent.
+   */
   onInput?: (event: ComboboxInputEvent) => void;
+  /** Focus moved into the combobox. Preact, Solid, Vue: the DOM event. React: a SyntheticEvent. */
   onFocus?: (event: ComboboxFocusEvent) => void;
+  /** Focus left the combobox. Preact, Solid, Vue: the DOM event. React: a SyntheticEvent. */
   onBlur?: (event: ComboboxFocusEvent) => void;
+  /**
+   * Validation failed (e.g. `required` and empty) on form submit or `checkValidity()`.
+   * - Preact, Solid, Vue: called, in either casing (`onInvalid` or `oninvalid`), with the DOM event.
+   * - React 19: only as `oninvalid` (lowercase).
+   * - React 18: **never called** - use `ref` + `addEventListener('invalid', ...)`.
+   */
   onInvalid?: (event: ComboboxEvent) => void;
+  /** Same event as `onInvalid`. React 19 needs this lowercase spelling; React 18 never calls it. */
+  oninvalid?: (event: ComboboxEvent) => void;
+  /**
+   * The value was reset: the owner `<form>` was reset, or the user cleared all (`clearable`).
+   * - Preact, Solid, Vue: called, in either casing (`onReset` or `onreset`), with the DOM event.
+   * - React 19: only as `onreset` (lowercase).
+   * - React 18: **never called** - use `ref` + `addEventListener('reset', ...)`.
+   */
+  onReset?: (event: ComboboxEvent) => void;
+  /** Same event as `onReset`. React 19 needs this lowercase spelling; React 18 never calls it. */
+  onreset?: (event: ComboboxEvent) => void;
+  /**
+   * The picker closed; `event.target.changed` tells whether the value changed meanwhile.
+   * - Preact, Solid, Vue: called, in either casing (`onClose` or `onclose`), with the DOM event.
+   * - React 19: only as `onclose` (lowercase).
+   * - React 18: **never called** - use `ref` + `addEventListener('close', ...)`.
+   */
+  onClose?: (event: ComboboxEvent) => void;
+  /** Same event as `onClose`. React 19 needs this lowercase spelling; React 18 never calls it. */
+  onclose?: (event: ComboboxEvent) => void;
+  /**
+   * Enter was pressed in the search field; `event.target.query` is the text.
+   * - Preact, Solid, Vue: called, in either casing, with the DOM event.
+   * - React 19: only as `onsearch` (lowercase).
+   * - React 18: **never called** - use `ref` + `addEventListener('search', ...)`.
+   */
+  onSearch?: (event: ComboboxEvent) => void;
+  /** Same event as `onSearch`. React 19 needs this lowercase spelling; React 18 never calls it. */
+  onsearch?: (event: ComboboxEvent) => void;
 
   [key: `data-${string}`]: unknown;
   [key: `aria-${string}`]: unknown;
@@ -316,52 +374,110 @@ declare global {
 // handlers it knows (onChange, onInput, onFocus, onClick, ...), not DOM events. Events React
 // doesn't know ("close", "search") are attached by React 19 as native listeners under the exact,
 // case-sensitive prop name, so only the lowercase `onclose`/`onsearch` are declared.
+// #region react-type-fallbacks
+/*
+ * Module-private stand-ins for the React types the augmentation below uses. Inside
+ * `declare module 'react'` React's own HTMLAttributes/Key/Ref take precedence; these only resolve
+ * when React's types aren't in the program (React not installed, or - on TypeScript 7 - not
+ * imported by any checked file). Then the augmentation is inert, and without them a project with
+ * `skipLibCheck: false` would get "Cannot find name"/"Cannot find module 'react'" errors from it.
+ * (`import('react').X` can't be used for the same reason.)
+ * The declaration emitter drops them as unused (React is installed here), so
+ * scripts/fix-dual-package.mjs copies this region into the emitted index.d.ts files.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type HTMLAttributes<T> = object;
+type Key = string | number | bigint;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type Ref<T> = unknown;
+// #endregion react-type-fallbacks
+
 declare module 'react' {
-  /** A React event whose `target` is the element (events from the shadow DOM are retargeted to it). */
-  type ComboboxSyntheticEvent<T, E extends globalThis.Event = globalThis.Event> = import('react').SyntheticEvent<T, E> & { target: EventTarget & T };
+  // Only names that both @types/react and preact/compat export are used here (HTMLAttributes, Key,
+  // Ref): with `paths: { "react": ["preact/compat"] }` this augmentation lands on preact/compat,
+  // which has no SyntheticEvent / ClassAttributes.
 
-  // (Qualified as import('react') so the names resolve even when React's types enter the program
-  // only through this augmentation - TypeScript 7 doesn't put them in scope otherwise.)
-  type ComboboxBaseHTMLAttributes<T> = import('react').HTMLAttributes<T>;
-  type ComboboxBaseHostAttributes<T> = Omit<import('react').HTMLAttributes<T>, 'onInput'>;
+  /**
+   * The event React passes to the handlers it manages: React's SyntheticEvent (same members), with
+   * `target` being the element (events from the shadow DOM are retargeted to it).
+   */
+  interface ComboboxSyntheticEvent<T, E extends globalThis.Event = globalThis.Event> {
+    nativeEvent: E;
+    currentTarget: EventTarget & T;
+    target: EventTarget & T;
+    bubbles: boolean;
+    cancelable: boolean;
+    defaultPrevented: boolean;
+    eventPhase: number;
+    isTrusted: boolean;
+    timeStamp: number;
+    type: string;
+    preventDefault(): void;
+    isDefaultPrevented(): boolean;
+    stopPropagation(): void;
+    isPropagationStopped(): boolean;
+    persist(): void;
+  }
 
-  interface ComboboxHTMLAttributes<T> extends ComboboxBaseHostAttributes<T>, ComboboxJsxAttributes {
+  /** Bivariant like React's EventHandler, so React's own handler types (ChangeEventHandler...) fit. */
+  type ComboboxEventHandler<E> = { bivarianceHack(event: E): void }['bivarianceHack'];
+
+  /** React's ClassAttributes: `key` and a typed `ref`. */
+  interface ComboboxClassAttributes<T> {
+    key?: Key | null | undefined;
+    ref?: Ref<T> | undefined;
+  }
+
+  // Type aliases rather than `interface extends`: React's attributes are replaced, not checked
+  // for compatibility, which also keeps these valid against preact/compat's HTMLAttributes.
+  type ComboboxBaseHTMLAttributes<T extends EventTarget, Own> = Omit<HTMLAttributes<T>, keyof Own | 'class'> & Own & {
     class?: string | undefined;
+  };
 
+  type ComboboxHTMLAttributes<T extends EventTarget> = ComboboxBaseHTMLAttributes<T, ComboboxJsxAttributes & {
     /** The user changed the selection (`event.target.value` is the new value). */
-    onChange?: import('react').EventHandler<ComboboxSyntheticEvent<T>> | undefined;
+    onChange?: ComboboxEventHandler<ComboboxSyntheticEvent<T>> | undefined;
     /** The user typed in the search field (`event.target.query`); `nativeEvent` is its InputEvent. */
-    onInput?: import('react').EventHandler<ComboboxSyntheticEvent<T, globalThis.InputEvent>> | undefined;
-    onInvalid?: import('react').EventHandler<ComboboxSyntheticEvent<T>> | undefined;
+    onInput?: ComboboxEventHandler<ComboboxSyntheticEvent<T, globalThis.InputEvent>> | undefined;
+    /** Never called by React 19 for custom elements (the event doesn't bubble) - use `oninvalid`. */
+    onInvalid?: undefined;
+    /** Never called by React 19 for custom elements (the event doesn't bubble) - use `onreset`. */
+    onReset?: undefined;
 
     /** Native listener: the picker closed (`event.target.changed`). Lowercase - `onClose` never fires. */
     onclose?: ((event: ComboboxEvent) => void) | undefined;
     /** Native listener: Enter in the search field. Lowercase - `onSearch` never fires. */
     onsearch?: ((event: ComboboxEvent) => void) | undefined;
-  }
+    /** Native listener: the owner form was reset, or the user cleared all. Lowercase - `onReset` never fires. */
+    onreset?: ((event: ComboboxEvent) => void) | undefined;
+    /** Native listener: validation failed (e.g. `required` and empty). Lowercase - `onInvalid` never fires. */
+    oninvalid?: ((event: ComboboxEvent) => void) | undefined;
+  }>;
 
-  interface ComboboxOptionHTMLAttributes<T> extends ComboboxBaseHTMLAttributes<T>, ComboboxOptionJsxAttributes {
-    class?: string | undefined;
-  }
+  type ComboboxOptionHTMLAttributes<T extends EventTarget> = ComboboxBaseHTMLAttributes<T, ComboboxOptionJsxAttributes>;
 
-  interface ComboboxTagHTMLAttributes<T> extends ComboboxBaseHTMLAttributes<T> {
-    class?: string | undefined;
-  }
+  type ComboboxTagHTMLAttributes<T extends EventTarget> = ComboboxBaseHTMLAttributes<T, {}>;
 
   /**
-   * @types/react 18 builds React.JSX.IntrinsicElements on top of the global JSX namespace, so
-   * its entries must stay assignable to the framework-agnostic global ones (catch-all `on*`,
-   * native event types): with React 18 types the global entries are kept as they are.
-   * @types/react 19 has no global JSX namespace: React.JSX gets React-typed props.
-   * (React 18 types declare the HTML elements in the global namespace, React 19 types don't.)
+   * Which props to use:
+   * - @types/react 19: React-typed props (SyntheticEvents, typed ref, React's attributes).
+   * - @types/react 18 builds React.JSX.IntrinsicElements on top of the global JSX namespace, so
+   *   its entries must stay assignable to the framework-agnostic global ones: those are kept.
+   *   (React 18 types declare the HTML elements in the global namespace, React 19 types don't.)
+   * - preact/compat aliased as 'react': its JSX is Preact's, and Preact passes native DOM events,
+   *   so the framework-agnostic props - the same ones the 'preact' augmentation declares.
+   *   (Preact's JSX accepts `class`, React's doesn't.)
    */
-  type ComboboxIntrinsicElement<Global, Typed> = globalThis.JSX.IntrinsicElements extends { div: unknown } ? Global : Typed;
+  type ComboboxIntrinsicElement<Global, Typed> =
+    globalThis.JSX.IntrinsicElements extends { div: unknown } ? Global
+    : JSX.IntrinsicElements extends { div: infer Div } ? ('class' extends keyof Div ? Global : Typed)
+    : Typed;
 
   namespace JSX {
     interface IntrinsicElements {
-      'combo-box': ComboboxIntrinsicElement<ComboboxElementAttributes, import('react').ClassAttributes<HTMLComboboxElement> & ComboboxHTMLAttributes<HTMLComboboxElement>>;
-      'box-option': ComboboxIntrinsicElement<ComboboxOptionElementAttributes, import('react').ClassAttributes<HTMLComboboxOptionElement> & ComboboxOptionHTMLAttributes<HTMLComboboxOptionElement>>;
-      'box-tag': ComboboxIntrinsicElement<ComboboxTagElementAttributes, import('react').ClassAttributes<HTMLComboboxTagElement> & ComboboxTagHTMLAttributes<HTMLComboboxTagElement>>;
+      'combo-box': ComboboxIntrinsicElement<ComboboxElementAttributes, ComboboxClassAttributes<HTMLComboboxElement> & ComboboxHTMLAttributes<HTMLComboboxElement>>;
+      'box-option': ComboboxIntrinsicElement<ComboboxOptionElementAttributes, ComboboxClassAttributes<HTMLComboboxOptionElement> & ComboboxOptionHTMLAttributes<HTMLComboboxOptionElement>>;
+      'box-tag': ComboboxIntrinsicElement<ComboboxTagElementAttributes, ComboboxClassAttributes<HTMLComboboxTagElement> & ComboboxTagHTMLAttributes<HTMLComboboxTagElement>>;
     }
   }
 }

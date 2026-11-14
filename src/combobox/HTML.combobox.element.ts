@@ -1,6 +1,6 @@
 import { ComboboxMarkup } from './Combobox.markup.js'
 import { HTMLComboboxOptionElement } from './HTML.combobox.option.element.js';
-import { toBoolean } from './Boolean.attribute.value.normalizer.js';
+import { propertyToBoolean, toBoolean } from './Boolean.attribute.value.normalizer.js';
 import { HTMLComboboxTagElement } from './HTML.combobox.tag.element.js';
 import { HTMLComboboxOptionsCollection } from './HTML.combobox.options.collection.js';
 
@@ -266,21 +266,21 @@ export class HTMLComboboxElement extends HTMLElement {
     return this.hasAttribute('clearable');
   }
   set clearable(value) {
-    super.toggleAttribute('clearable', toBoolean(value));
+    super.toggleAttribute('clearable', propertyToBoolean(value));
   }
 
   get filterable() {
     return this.hasAttribute('filterable');
   }
   set filterable(value) {
-    super.toggleAttribute('filterable', toBoolean(value));
+    super.toggleAttribute('filterable', propertyToBoolean(value));
   }
 
   get searchable() {
     return this.hasAttribute('searchable');
   }
   set searchable(value) {
-    super.toggleAttribute('searchable', toBoolean(value));
+    super.toggleAttribute('searchable', propertyToBoolean(value));
   }
 
   // <select> specific properties (implements HTMLSelectElement)
@@ -288,7 +288,7 @@ export class HTMLComboboxElement extends HTMLElement {
     return this.hasAttribute('disabled');
   }
   set disabled(value) {
-    super.toggleAttribute('disabled', toBoolean(value));
+    super.toggleAttribute('disabled', propertyToBoolean(value));
   }
 
   get form() {
@@ -311,7 +311,7 @@ export class HTMLComboboxElement extends HTMLElement {
     return this.hasAttribute('multiple');
   }
   set multiple(value) {
-    super.toggleAttribute('multiple', toBoolean(value));
+    super.toggleAttribute('multiple', propertyToBoolean(value));
   }
 
   /** The options, as a live `HTMLOptionsCollection`-like list (like `select.options`) */
@@ -327,7 +327,7 @@ export class HTMLComboboxElement extends HTMLElement {
     return this.hasAttribute('required');
   }
   set required(value) {
-    super.toggleAttribute('required', toBoolean(value));
+    super.toggleAttribute('required', propertyToBoolean(value));
   }
 
   /** Index of the first selected option, or -1. Setting it selects only that option. */
@@ -442,7 +442,8 @@ export class HTMLComboboxElement extends HTMLElement {
   // Overwritten methods
   setAttribute(name: string, value: any) {
     if (HTMLComboboxElement.OWN_IDL.has(name)) {
-      Reflect.set(this, name, value);
+      // through the setter, with attribute semantics: setAttribute('multiple', '') turns it on
+      Reflect.set(this, name, HTMLComboboxElement.#BOOLEAN_ATTRIBUTES.has(name) ? toBoolean(value) : value);
     } else {
       super.setAttribute(name, value);
     }
@@ -874,7 +875,8 @@ export class HTMLComboboxElement extends HTMLElement {
       // Without a value attribute, the selection comes from the options' `selected` attributes:
       // `value = null` would clear it
       if (key === 'value' && !this.hasAttribute('value')) continue;
-      this[key] = this.getAttribute(key);
+      const attribute = this.getAttribute(key);
+      Reflect.set(this, key, HTMLComboboxElement.#BOOLEAN_ATTRIBUTES.has(key) ? toBoolean(attribute) : attribute);
     }
   }
 

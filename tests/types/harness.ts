@@ -4,7 +4,7 @@
  * Type tests must see the package exactly the way a consumer does: the built `dist/`, resolved
  * through `package.json` `exports`/`types` from inside `node_modules`, under the consumer's own
  * `moduleResolution`. So `setup.ts` builds and `npm pack`s the package once, then installs every
- * fixture "layout" (a standalone app, monorepos with npm/pnpm) into `tests/types/.work/<layout>`
+ * fixture "layout" (a standalone app, monorepos with npm/pnpm) into `<os tmpdir>/html-combobox-element-type-tests/<layout>`
  * from that tarball. Each test then runs a real `tsc` over a fixture and asserts on its diagnostics.
  *
  * Fixture files carry their own assertions:
@@ -14,13 +14,20 @@
  */
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const TYPES_DIR = path.dirname(fileURLToPath(import.meta.url));
 export const ROOT = path.resolve(TYPES_DIR, '../..');
 export const FIXTURES = path.join(TYPES_DIR, 'fixtures');
-export const WORK = path.join(TYPES_DIR, '.work');
+/**
+ * Outside the repository on purpose: TypeScript resolves packages by walking up parent
+ * directories, so fixtures installed inside the repo would also see the repo's own node_modules
+ * (react, preact, solid-js, vue are dev dependencies) - a "no framework installed" fixture
+ * wouldn't be one. TYPES_WORK_DIR overrides the location; it must not be inside a project.
+ */
+export const WORK = process.env.TYPES_WORK_DIR ?? path.join(os.tmpdir(), 'html-combobox-element-type-tests');
 export const TARBALL = path.join(WORK, 'html-combobox-element.tgz');
 
 /** TypeScript versions installed side by side (npm aliases) in the standalone consumer layouts. */
@@ -44,6 +51,11 @@ export const LAYOUTS: Layout[] = [
   { name: 'consumer-react18', install: 'npm', shared: [{ from: 'shared', to: '.' }] },
   // No React/Preact/Solid/Vue installed: the framework augmentations must stay inert.
   { name: 'consumer-vanilla', install: 'npm', shared: [{ from: 'shared', to: '.' }] },
+  { name: 'consumer-preact', install: 'npm', shared: [{ from: 'shared', to: '.' }] },
+  // react aliased to preact/compat, react + preact + @types/react all installed
+  { name: 'consumer-preact-compat', install: 'npm', shared: [{ from: 'shared', to: '.' }] },
+  { name: 'consumer-solidjs', install: 'npm', shared: [{ from: 'shared', to: '.' }] },
+  { name: 'consumer-vue', install: 'npm', shared: [{ from: 'shared', to: '.' }] },
   { name: 'monorepo-npm', install: 'npm', shared: [{ from: 'monorepo', to: '.' }] },
   { name: 'monorepo-pnpm', install: 'pnpm', shared: [{ from: 'monorepo', to: '.' }] },
   { name: 'monorepo-pnpm-strict', install: 'pnpm', shared: [{ from: 'monorepo', to: '.' }] },
@@ -70,11 +82,12 @@ export interface TscResult {
 const DIAGNOSTIC = /^(.+?)\((\d+),\d+\): error TS(\d+): (.*)$/;
 const GLOBAL_DIAGNOSTIC = /^error TS(\d+): (.*)$/;
 
-export function tsc(cwd: string, args: string[], ts: TsVersion | 'workspace' = 'ts5.9'): TscResult {
+export function tsc(cwd: string, args: string[], ts: TsVersion | 'workspace' = 'ts5.9', vue = false): TscResult {
+  const tsc = vue ? "vue-tsc" : "tsc"
   const bin =
     ts === 'workspace'
-      ? path.join(cwd, 'node_modules', 'typescript', 'bin', 'tsc')
-      : path.join(cwd, 'node_modules', TS_VERSIONS[ts], 'bin', 'tsc');
+      ? path.join(cwd, 'node_modules', 'typescript', 'bin', tsc)
+      : path.join(cwd, 'node_modules', TS_VERSIONS[ts], 'bin', tsc);
   // `-b` must come first on the command line
   const argv = args[0] === '-b' ? [args[0], args[1], '--pretty', 'false', ...args.slice(2)] : ['--pretty', 'false', ...args];
   const res = spawnSync(process.execPath, [bin, ...argv], { cwd, encoding: 'utf8' });

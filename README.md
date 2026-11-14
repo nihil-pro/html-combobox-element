@@ -45,6 +45,7 @@ This registers the `<combo-box>`, `<box-option>` and `<box-tag>` custom elements
 
 ### Differences from `<select>`
 - In `multiple` mode, the `combobox.value` lists every selected value, where `select.value` gives only the first;
+- In `multiple` mode, the selected values are displayed as chips;
 - In `single`mode, the `<combo-box>` without a selected option stays empty, where a `<select>` selects its first option.
 
 ### Events – type: when
@@ -55,23 +56,24 @@ This registers the `<combo-box>`, `<box-option>` and `<box-tag>` custom elements
 - `reset`: The form was reset
 
 Read from event:
-- `event.target.changed`: tells whether the value differs from when it opened
-- `event.target.query`: tells the search field current text
-- `event.target.query`: the combobox selection
+- `event.target.changed`: tells whether the value differs from when it opened;
+- `event.target.query`: tells the search field current text;
+- `event.target.value`: the combobox selection;
+- `event.target.valueAsArray`: the combobox selection as an array of strings.
 
-Like native form controls, changes made by script dispatch no `change`.
-Framework bindings that assume `input` means "the value changed" need the `change` event instead.
+Like native form controls, changes made by script dispatch no `change`. Framework bindings that assume `input` means "the value changed" need the `change` event instead.
 
 ### Attributes
 All `<select>`'s attributes are supported, and few extra:
-- `filterable`: Displays search field in picker; options are automatically filtered against input value
-- `searchable`: Displays search field in picker; you listen for input events and implement own filter. Usefully for fuzzy search, etc.
-- `placeholder`: The combobox own placeholder, shown when there is no selection
-- `query`: The search field input value
+- `filterable`: Displays search field in picker; options are automatically filtered against input value;
+- `searchable`: Displays search field in picker; you listen for input events and implement own filter. Usefully for fuzzy search, etc.;
+- `placeholder`: The combobox own placeholder, shown when there is no selection;
+- `query`: The search field input value.
 
 ## Options API
 Like `select.options`, `combobox.options` is a live collection too, but a fully compatible polyfill – `HTMLComboboxOptionsCollection`, because `HTMLOptionsCollection` can't be constructed or subclassed.
 The only difference between `select.options` and `combobox.options`, is that `combobox.options` will false on `instanceof HTMLOptionsCollection` check.
+The `<box-option>` itself has the same API as native `<option>`. It exists, because the `<option>` can't be styled at all.
 
 ## Accessibility
 - Roles and states are set through `ElementInternals`, and mirrored as `role` and `aria`attributes, so tools that read the DOM can see it too.
@@ -144,96 +146,52 @@ That teaches it the `<select>` API of `<combo-box>` through the DOM only. Your p
 Playwright names a custom element from `<label for>` only for native controls, 
 so query `getByRole('combobox', { name })` with `aria-label` or `aria-labelledby` on the `<combo-box>`, or without a name.
 
-## TypeScript and JSX
-`import 'html-combobox-element'` also brings the typings: `document.createElement('combo-box')`, `querySelector`, `addEventListener` with the combobox's own events (`change`, `input`, `close`, `search`, `reset`, with a typed `event.target`) and `instanceof HTMLComboboxElement` all use the same `HTMLComboboxElement` type.
+## TypeScript and JSX frameworks
+`import 'html-combobox-element'` also brings the typings for: 
+- `document.createElement('combo-box')`;
+- `querySelector`;
+- `addEventListener` with a typed `event.target`.
+
+### Event listeners attached through the props
+The props are the same everywhere, but which handlers get called, and with what, depends on the framework:
+
+| Handler prop | React 19 | React 18 | Vue/Preact/SolidJS |
+|--------------|---|---|--------------------|
+| `onInput`    | SyntheticEvent | SyntheticEvent | DOM event          |
+| `onChange`   | SyntheticEvent | never called | DOM event          |
+| `onsearch`   | DOM event | never called | DOM event          |
+| `oninvalid`  | DOM event | never called | DOM event          |
+| `onreset`    | DOM event | never called | DOM event          |
+| `onclose`    | DOM event | never called | DOM event          |
+| `onClose`    | never called | never called | DOM event          |
+| `onSearch`   | never called | never called | DOM event          |
+| `onReset`    | never called | never called | DOM event          |
+| `onInvalid`  | never called | never called | DOM event          |
+
+The `combobox.addEventListener(type, cb)` works seamlessly in all frameworks.
+
+### Boolean props
+The `multiple`, `clearable`, `disabled`, ... behave like native ones in every framework, except that the string `'false'` is also `false`, i.e. turns the feature off.
 
 ### React
-Nothing to add: `<combo-box>`, `<box-option>` and `<box-tag>` are typed with React's own types (`ref`, `style`, every DOM handler, `aria-*`...), for `jsx: "react-jsx"`, `"react-jsxdev"` and classic `"react"`.
+Package ships types, for `jsx: "react-jsx"`, `"react-jsxdev"` and classic `"react"`.
+Handlers are typed accordingly: `onChange`, `onInput`, `onFocus`, `onClick`, ... receive a SyntheticEvent: `event.target` is the `<combo-box>`, `event.nativeEvent` is the DOM event.
 
-React wraps events in its own SyntheticEvents, so handlers are typed accordingly:
-- `onChange`, `onInput`, `onFocus`, `onClick`, ... receive a SyntheticEvent: `event.target` is the `<combo-box>` (`event.target.value`, `event.target.query`), `event.nativeEvent` is the DOM event.
-- Events React doesn't know are attached by React 19 as native listeners under the exact, case-sensitive name: use `onclose` and `onsearch` (lowercase). `onClose`/`onSearch` never fire, and are type errors.
+- In React 19, events it doesn't know ("close", "search") are attached as native listeners under the exact, case-sensitive name, so use `onclose` and `onsearch`.
+- In React 18, listen to `change`, `close` and `search` on the element itself through the ref.
+- In a project written in React, but aliased to _Preact_ at build time – types may confuse. Rely on runtime behaviour, rather than on Typescript errors.
 
-```tsx
-<combo-box
-  name="fruit"
-  multiple
-  onChange={(event) => setFruits(event.target.valueAsArray)}
-  onclose={(event) => event.target.changed && save()}
->
-  <box-option value="apple">Apple</box-option>
-</combo-box>
-```
+### Preact and SolidJS
+Nothing to do, everything just work.
 
-With `@types/react` 18 the framework-agnostic typings are used, as in previous versions.
+### Vue
+Vue template compiler treats unknown tags as Vue components by default. You must tell it to treat `<combo-box>`, `<box-option>` and `<box-tag>` tags as custom elements.
 
-If you copied the React `combo-box.d.ts` snippet from the README of a previous version, delete it: it still compiles, but it keeps the old typings.
-
-### Monorepos
-The typings are part of a TypeScript program only if the program includes this package. A workspace package that renders `<combo-box>` but leaves the import to the app shell type-checks inside the app, but not on its own (its CI, editor, project references). Add a type-only import there - it's removed from the JS output, nothing is registered twice:
+### Monorepos and microservices
+The typings are part of a TypeScript program only if the program includes this package. 
+A workspace package that renders `<combo-box>` but leaves the import to the app shell type-checks inside the app, 
+but not on its own (its CI, editor, project references). 
+Add a type-only import there - it's removed from the JS output, nothing is registered twice:
 ```ts
 import type {} from 'html-combobox-element';
 ```
-
-### Other frameworks
-JSX/template type-checking for these needs one small file in your project, with the snippet for your framework:
-
-<details>
-<summary><strong>Preact</strong> (<code>jsx: "react-jsx"</code>, <code>jsxImportSource: "preact"</code>)</summary>
-
-```ts
-// combo-box.d.ts
-declare module 'preact/jsx-runtime' {
-  namespace JSX {
-    interface IntrinsicElements {
-      'combo-box': ComboboxElementAttributes;
-      'box-option': ComboboxOptionElementAttributes;
-      'box-tag': ComboboxTagElementAttributes;
-    }
-  }
-}
-```
-
-</details>
-
-<details>
-<summary><strong>Solid</strong> (<code>jsx: "preserve"</code>, <code>jsxImportSource: "solid-js"</code>)</summary>
-
-```ts
-// combo-box.d.ts
-declare module 'solid-js/jsx-runtime' {
-  namespace JSX {
-    interface IntrinsicElements {
-      'combo-box': ComboboxElementAttributes;
-      'box-option': ComboboxOptionElementAttributes;
-      'box-tag': ComboboxTagElementAttributes;
-    }
-  }
-}
-```
-
-</details>
-
-<details>
-<summary><strong>Vue</strong> (SFC <code>&lt;template&gt;</code>, checked via <code>vue-tsc</code>)</summary>
-
-Vue templates aren't JSX, so they're type-checked through `GlobalComponents` instead:
-
-```ts
-// combo-box.d.ts
-declare module 'vue' {
-  export interface GlobalComponents {
-    'combo-box': new () => { $props: ComboboxElementAttributes };
-    'box-option': new () => { $props: ComboboxOptionElementAttributes };
-  }
-}
-
-```
-
-This checks required props and value types for props you pass; like any native custom
-element, Vue still allows extra/unrecognized attributes through (that's expected Vue
-behavior for custom elements, not a gap in this typing). The trailing `export {};` may be 
-required here (without it the file is treated as a script, not a module, and the
-augmentation breaks Vue's own types).
-
-</details>

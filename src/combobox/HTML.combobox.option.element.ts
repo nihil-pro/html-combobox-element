@@ -1,4 +1,4 @@
-import { toBoolean } from './Boolean.attribute.value.normalizer.js';
+import { propertyToBoolean, toBoolean } from './Boolean.attribute.value.normalizer.js';
 
 /**
  * The `<option>` of `<combo-box>`.
@@ -19,6 +19,7 @@ import { toBoolean } from './Boolean.attribute.value.normalizer.js';
  */
 export class HTMLComboboxOptionElement extends HTMLElement {
   static OWN_IDL = new Set(['value', 'label', 'selected', 'disabled']);
+  static #BOOLEAN_ATTRIBUTES = new Set(['selected', 'disabled']);
   static observedAttributes = ['selected', 'disabled'];
   static EventInit = { bubbles: true, cancelable: true, composed: true };
 
@@ -79,14 +80,14 @@ export class HTMLComboboxOptionElement extends HTMLElement {
   }
   // Normalization only: the side effects run in attributeChangedCallback
   set selected(value) {
-    super.toggleAttribute('selected', toBoolean(value));
+    super.toggleAttribute('selected', propertyToBoolean(value));
   }
 
   get disabled() {
     return this.hasAttribute('disabled')
   }
   set disabled(value) {
-    super.toggleAttribute('disabled', toBoolean(value));
+    super.toggleAttribute('disabled', propertyToBoolean(value));
   }
 
   attributeChangedCallback(name: 'selected' | 'disabled', _oldValue: string | null, newValue: string | null) {
@@ -140,13 +141,15 @@ export class HTMLComboboxOptionElement extends HTMLElement {
 
   #initialAttributesSynchronization() {
     for (const key of HTMLComboboxOptionElement.OWN_IDL) {
-      this[key] = this.getAttribute(key);
+      const attribute = this.getAttribute(key);
+      Reflect.set(this, key, HTMLComboboxOptionElement.#BOOLEAN_ATTRIBUTES.has(key) ? toBoolean(attribute) : attribute);
     }
   }
 
   setAttribute(name: string, value: string) {
     if (HTMLComboboxOptionElement.OWN_IDL.has(name)) {
-      this[name] = value;
+      // through the setter, with attribute semantics: setAttribute('selected', '') selects
+      Reflect.set(this, name, HTMLComboboxOptionElement.#BOOLEAN_ATTRIBUTES.has(name) ? toBoolean(value) : value);
     } else {
       super.setAttribute(name, value);
     }
