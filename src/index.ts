@@ -267,25 +267,41 @@ export interface ComboboxCommonAttributes {
 
   /**
    * The user changed the selection; `event.target.value` / `.valueAsArray` is the new value.
-   * - Preact, Vue: called with the DOM event.
+   * - Preact, Solid, Vue: called with the DOM event.
    * - React 19: called with a SyntheticEvent (`event.nativeEvent` is the DOM event).
    * - React 18: **never called** - listen with `ref` + `addEventListener('change', ...)`.
    */
   onChange?: (event: ComboboxEvent) => void;
   /**
    * The user typed in the search field; `event.target.query` is the text.
-   * Preact, Vue: the DOM InputEvent. React 18 and 19: a SyntheticEvent.
+   * Preact, Solid, Vue: the DOM InputEvent. React 18 and 19: a SyntheticEvent.
    */
   onInput?: (event: ComboboxInputEvent) => void;
-  /** Focus moved into the combobox. Preact, Vue: the DOM event. React: a SyntheticEvent. */
+  /** Focus moved into the combobox. Preact, Solid, Vue: the DOM event. React: a SyntheticEvent. */
   onFocus?: (event: ComboboxFocusEvent) => void;
-  /** Focus left the combobox. Preact, Vue: the DOM event. React: a SyntheticEvent. */
+  /** Focus left the combobox. Preact, Solid, Vue: the DOM event. React: a SyntheticEvent. */
   onBlur?: (event: ComboboxFocusEvent) => void;
-  /** The value failed validation (e.g. `required` and empty) on form submit / `checkValidity()`. */
+  /**
+   * Validation failed (e.g. `required` and empty) on form submit or `checkValidity()`.
+   * - Preact, Solid, Vue: called, in either casing (`onInvalid` or `oninvalid`), with the DOM event.
+   * - React 19: only as `oninvalid` (lowercase).
+   * - React 18: **never called** - use `ref` + `addEventListener('invalid', ...)`.
+   */
   onInvalid?: (event: ComboboxEvent) => void;
+  /** Same event as `onInvalid`. React 19 needs this lowercase spelling; React 18 never calls it. */
+  oninvalid?: (event: ComboboxEvent) => void;
+  /**
+   * The value was reset: the owner `<form>` was reset, or the user cleared all (`clearable`).
+   * - Preact, Solid, Vue: called, in either casing (`onReset` or `onreset`), with the DOM event.
+   * - React 19: only as `onreset` (lowercase).
+   * - React 18: **never called** - use `ref` + `addEventListener('reset', ...)`.
+   */
+  onReset?: (event: ComboboxEvent) => void;
+  /** Same event as `onReset`. React 19 needs this lowercase spelling; React 18 never calls it. */
+  onreset?: (event: ComboboxEvent) => void;
   /**
    * The picker closed; `event.target.changed` tells whether the value changed meanwhile.
-   * - Preact, Vue: called, in either casing (`onClose` or `onclose`), with the DOM event.
+   * - Preact, Solid, Vue: called, in either casing (`onClose` or `onclose`), with the DOM event.
    * - React 19: only as `onclose` (lowercase).
    * - React 18: **never called** - use `ref` + `addEventListener('close', ...)`.
    */
@@ -294,7 +310,7 @@ export interface ComboboxCommonAttributes {
   onclose?: (event: ComboboxEvent) => void;
   /**
    * Enter was pressed in the search field; `event.target.query` is the text.
-   * - Preact, Vue: called, in either casing, with the DOM event.
+   * - Preact, Solid, Vue: called, in either casing, with the DOM event.
    * - React 19: only as `onsearch` (lowercase).
    * - React 18: **never called** - use `ref` + `addEventListener('search', ...)`.
    */
@@ -436,12 +452,19 @@ declare module 'react' {
     onChange?: ComboboxEventHandler<ComboboxSyntheticEvent<T>> | undefined;
     /** The user typed in the search field (`event.target.query`); `nativeEvent` is its InputEvent. */
     onInput?: ComboboxEventHandler<ComboboxSyntheticEvent<T, globalThis.InputEvent>> | undefined;
-    onInvalid?: ComboboxEventHandler<ComboboxSyntheticEvent<T>> | undefined;
+    /** Never called by React 19 for custom elements (the event doesn't bubble) - use `oninvalid`. */
+    onInvalid?: undefined;
+    /** Never called by React 19 for custom elements (the event doesn't bubble) - use `onreset`. */
+    onReset?: undefined;
 
     /** Native listener: the picker closed (`event.target.changed`). Lowercase - `onClose` never fires. */
     onclose?: ((event: ComboboxEvent) => void) | undefined;
     /** Native listener: Enter in the search field. Lowercase - `onSearch` never fires. */
     onsearch?: ((event: ComboboxEvent) => void) | undefined;
+    /** Native listener: the owner form was reset, or the user cleared all. Lowercase - `onReset` never fires. */
+    onreset?: ((event: ComboboxEvent) => void) | undefined;
+    /** Native listener: validation failed (e.g. `required` and empty). Lowercase - `onInvalid` never fires. */
+    oninvalid?: ((event: ComboboxEvent) => void) | undefined;
   }>;
 
   type ComboboxOptionHTMLAttributes<T extends EventTarget> = ComboboxBaseHTMLAttributes<T, ComboboxOptionJsxAttributes>;

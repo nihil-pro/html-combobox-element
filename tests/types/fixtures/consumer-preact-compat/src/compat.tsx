@@ -17,6 +17,8 @@ export function App() {
       class="picker"
       name="fruit"
       multiple
+      onReset={(event) => event.target.valueAsArray}
+      oninvalid={(event) => event.target.validity}
       onChange={(event) => {
         type _ = [Expect<Equal<IsAny<typeof event>, false>>, Expect<Equal<typeof event.target.valueAsArray, string[]>>];
         event.composedPath(); // a real DOM event in Preact

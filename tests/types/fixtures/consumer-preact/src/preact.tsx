@@ -22,6 +22,8 @@ export function Basic() {
 export function Events() {
   return (
     <combo-box
+      onReset={(event) => event.target.valueAsArray}
+      oninvalid={(event) => event.target.validity}
       onChange={(event) => {
         type _ = [
           Expect<Equal<IsAny<typeof event>, false>>,

@@ -78,8 +78,12 @@ export function Events() {
       onBlur={(event) => {
         type _ = Expect<Equal<IsAny<typeof event>, false>>;
       }}
-      onInvalid={(event) => {
+      // 'invalid' and 'reset' don't bubble: lowercase, native listeners (React 19)
+      oninvalid={(event) => {
         type _ = Expect<Equal<typeof event.target.validity, ValidityState>>;
+      }}
+      onreset={(event) => {
+        type _ = Expect<Equal<typeof event.target.valueAsArray, string[]>>;
       }}
       // React 19 attaches non-React `on*` props of custom elements as native listeners, by the
       // exact (case-sensitive) event name: "close" and "search" need lowercase props.
